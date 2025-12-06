@@ -650,6 +650,35 @@
     const staff = APP_STATE.staff || [];
 
     const iconVal = ws.icon_url || "";
+    const emojiChoices = [
+      "🔮",
+      "📋",
+      "✅",
+      "📊",
+      "🚀",
+      "🛠️",
+      "🧠",
+      "🎯",
+      "📌",
+      "📦",
+      "📈",
+      "🧩",
+      "🗂️",
+      "🧾",
+      "🏗️",
+      "🛰️",
+      "⚡",
+      "🌟",
+      "🏁",
+      "🧭",
+    ];
+    const emojiOptions = [
+      `<option value="">Select an emoji</option>`,
+      ...emojiChoices.map((e) =>
+        `<option value="${e}" ${iconVal === e ? "selected" : ""}>${e}</option>`
+      ),
+      `<option value="custom">Custom…</option>`,
+    ].join("");
 
     const rows = staff.map((u) => {
       const current = roles[u.email.toLowerCase()] || "none";
@@ -689,12 +718,10 @@
 
         <div class="gt-modal-section">
           <div class="gt-modal-label">Icon</div>
-          <div class="gt-modal-help">Pick an emoji for this workspace.</div>
+          <div class="gt-modal-help">Pick from the list or paste any emoji.</div>
           <div class="gt-role-form">
-            <input id="gt-icon-url" class="gt-input" type="text" placeholder="🔮" value="${iconVal}" />
-            <div class="gt-emoji-grid">
-              ${["🔮","📋","✅","📊","🚀","🛠️","🧠","🎯"].map(e=>`<button class="gt-emoji-btn" data-emoji="${e}">${e}</button>`).join("")}
-            </div>
+            <select id="gt-emoji-select" class="gt-select">${emojiOptions}</select>
+            <input id="gt-icon-url" class="gt-input" type="text" placeholder="🔮 paste or pick" value="${iconVal}" />
             <button id="gt-icon-save" class="gt-button gt-button-primary">Save Icon</button>
           </div>
         </div>
@@ -724,6 +751,7 @@
 
     const iconSave = document.getElementById("gt-icon-save");
     const iconInput = document.getElementById("gt-icon-url");
+    const emojiSelect = document.getElementById("gt-emoji-select");
     const renameBtn = document.getElementById("gt-ws-rename");
     const nameInput = document.getElementById("gt-ws-name");
 
@@ -742,13 +770,19 @@
       };
     }
 
-    modal.querySelectorAll(".gt-emoji-btn").forEach((btn) => {
-      btn.onclick = (e) => {
-        e.preventDefault();
-        const emoji = btn.getAttribute("data-emoji");
-        if (iconInput) iconInput.value = emoji;
+    if (emojiSelect && iconInput) {
+      emojiSelect.onchange = () => {
+        const choice = emojiSelect.value;
+        if (choice === "custom") {
+          iconInput.focus();
+          iconInput.select();
+          return;
+        }
+        if (choice) {
+          iconInput.value = choice;
+        }
       };
-    });
+    }
   }
 
   async function saveWorkspaceRole(workspaceId, email, role) {

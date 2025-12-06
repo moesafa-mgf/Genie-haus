@@ -142,7 +142,7 @@ module.exports = async (req, res) => {
             icon_url = COALESCE(${iconUrl}, icon_url),
             updated_at = now()
         WHERE id = ${id} AND archived_at IS NULL
-        RETURNING id, location_id, name, created_by, created_at, updated_at
+        RETURNING id, location_id, name, icon_url, created_by, created_at, updated_at
       `;
 
       if (!rows.length) {
