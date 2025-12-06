@@ -498,28 +498,6 @@
 
     const canCreate = getCurrentUserRole() === "admin";
     const filtered = APP_STATE.workspaces;
-    const emojiChoices = [
-      "🔮",
-      "📋",
-      "✅",
-      "📊",
-      "🚀",
-      "🛠️",
-      "🧠",
-      "🎯",
-      "📌",
-      "📦",
-      "📈",
-      "🧩",
-      "🗂️",
-      "🧾",
-      "🏗️",
-      "🛰️",
-      "⚡",
-      "🌟",
-      "🏁",
-      "🧭",
-    ];
 
     const items = filtered
       .map((ws) => {
@@ -541,27 +519,6 @@
               </div>
               ${canCreate ? '<button class="gt-workspace-picker-gear" title="Settings">⚙</button>' : ""}
             </div>
-            ${
-              canCreate
-                ? `
-              <div class="gt-picker-inline" data-wsid="${ws.id}">
-                <div class="gt-picker-inline-label">Icon</div>
-                <div class="gt-emoji-mini-grid">
-                  ${emojiChoices
-                    .map(
-                      (e) =>
-                        `<button class="gt-emoji-mini" data-wsid="${ws.id}" data-emoji="${e}" title="Set icon to ${e}">${e}</button>`
-                    )
-                    .join("")}
-                </div>
-                <div class="gt-emoji-mini-row">
-                  <input class="gt-emoji-mini-input" data-wsid="${ws.id}" type="text" placeholder="Paste emoji" value="${iconVal}" />
-                  <button class="gt-emoji-mini-save" data-wsid="${ws.id}">Save</button>
-                </div>
-              </div>
-              `
-                : ""
-            }
           </div>
         `;
       })
@@ -596,30 +553,6 @@
           const id = el.getAttribute("data-id");
           openWorkspaceSettings(id);
         };
-      }
-      if (canCreate) {
-        el.querySelectorAll(".gt-emoji-mini").forEach((btn) => {
-          btn.onclick = async (e) => {
-            e.stopPropagation();
-            const wsid = btn.getAttribute("data-wsid");
-            const emoji = btn.getAttribute("data-emoji");
-            await patchWorkspace(wsid, { iconUrl: emoji });
-          };
-        });
-        const input = el.querySelector(".gt-emoji-mini-input");
-        if (input) {
-          input.onclick = (e) => e.stopPropagation();
-          input.onkeydown = (e) => e.stopPropagation();
-        }
-        const saveBtn = el.querySelector(".gt-emoji-mini-save");
-        if (saveBtn) {
-          saveBtn.onclick = async (e) => {
-            e.stopPropagation();
-            const wsid = saveBtn.getAttribute("data-wsid");
-            const val = (input?.value || "").trim() || null;
-            await patchWorkspace(wsid, { iconUrl: val });
-          };
-        }
       }
     });
 
