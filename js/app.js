@@ -680,13 +680,7 @@
     const addBtn = document.getElementById("gt-grid-add");
     if (addBtn) {
       addBtn.onclick = () => {
-        const grid = {
-          id: `grid_${Math.random().toString(36).slice(2, 6)}`,
-          name: `Grid ${APP_STATE.grids.length + 1}`,
-          filters: { ...APP_STATE.filters },
-        };
-        APP_STATE.grids.push(grid);
-        setActiveGrid(grid.id);
+        createAndActivateGrid();
       };
     }
   }
@@ -908,6 +902,19 @@
     const active = APP_STATE.grids.find((g) => g.id === APP_STATE.currentGridId);
     if (!active.filters) active.filters = { ...defaultFilters() };
     APP_STATE.filters = { ...defaultFilters(), ...active.filters };
+  }
+
+  function createAndActivateGrid(name) {
+    ensureDefaultGrid();
+    const grid = {
+      id: `grid_${Math.random().toString(36).slice(2, 6)}`,
+      name: name || `Grid ${APP_STATE.grids.length + 1}`,
+      filters: { ...APP_STATE.filters },
+    };
+    APP_STATE.grids.push(grid);
+    setActiveGrid(grid.id);
+    renderGridTabs();
+    schedulePush();
   }
 
   function selectWorkspace(workspaceId) {
