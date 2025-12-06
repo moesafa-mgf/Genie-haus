@@ -362,6 +362,30 @@ a:hover {
   margin-bottom: 6px;
 }
 
+.gt-mode-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.gt-mode-tab {
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: var(--gt-text-main);
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.gt-mode-tab.is-active {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.16);
+}
+
 .gt-view-tab {
   border: none;
   background: transparent;

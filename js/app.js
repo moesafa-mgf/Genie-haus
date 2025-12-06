@@ -15,6 +15,7 @@
     workspaces: [],
     currentWorkspaceId: null, // workspace must be selected first
     currentView: "table", // "table" | "board" | "dashboard"
+    currentMode: "data", // "data" | "dashboard"
     tasks: [],
     columns: [],
     activity: [],
@@ -130,6 +131,7 @@
 
               <!-- Main tasks shell (hidden until workspace chosen) -->
               <div id="gt-tasks-shell">
+                <div id="gt-mode-tabs" class="gt-mode-tabs"></div>
                 <div class="gt-view-tabs" id="gt-view-tabs">
                   <!-- view buttons injected by JS -->
                 </div>
@@ -247,6 +249,7 @@
       if (APP_STATE.currentView === "dashboard" && canViewDashboard()) {
         renderDashboardView();
       }
+      renderModeTabs();
     }
 
     updateHeaderUI();
@@ -554,6 +557,55 @@
     setActiveView(APP_STATE.currentView || "table", { skipRender: true });
   }
 
+  function renderModeTabs() {
+    const root = document.getElementById("gt-mode-tabs");
+    if (!root) return;
+    const mode = APP_STATE.currentMode || "data";
+    root.innerHTML = `
+      <button class="gt-mode-tab ${mode === "data" ? "is-active" : ""}" data-mode="data">Data</button>
+      <button class="gt-mode-tab ${mode === "dashboard" ? "is-active" : ""}" data-mode="dashboard">Dashboard</button>
+    `;
+
+    root.querySelectorAll("[data-mode]").forEach((btn) => {
+      btn.onclick = () => {
+        const m = btn.getAttribute("data-mode");
+        setActiveMode(m);
+      };
+    });
+  }
+
+  function setActiveMode(mode) {
+    APP_STATE.currentMode = mode === "dashboard" ? "dashboard" : "data";
+
+    const isDashboard = APP_STATE.currentMode === "dashboard";
+    const viewTabs = document.getElementById("gt-view-tabs");
+    const gridTabs = document.getElementById("gt-grid-tabs");
+    const filterBar = document.getElementById("gt-filter-bar");
+    const tableEl = document.getElementById("gt-view-table");
+    const boardEl = document.getElementById("gt-view-board");
+    const activityEl = document.getElementById("gt-view-activity");
+    const dashEl = document.getElementById("gt-view-dashboard");
+
+    if (isDashboard) {
+      if (viewTabs) viewTabs.classList.add("is-hidden");
+      if (gridTabs) gridTabs.classList.add("is-hidden");
+      if (filterBar) filterBar.classList.add("is-hidden");
+      if (tableEl) tableEl.classList.add("is-hidden");
+      if (boardEl) boardEl.classList.add("is-hidden");
+      if (activityEl) activityEl.classList.add("is-hidden");
+      if (dashEl) dashEl.classList.remove("is-hidden");
+      APP_STATE.currentView = "dashboard";
+      renderDashboardView();
+    } else {
+      if (viewTabs) viewTabs.classList.remove("is-hidden");
+      if (gridTabs) gridTabs.classList.remove("is-hidden");
+      if (filterBar) filterBar.classList.remove("is-hidden");
+      setActiveView(APP_STATE.currentView === "dashboard" ? "table" : APP_STATE.currentView, { force: true });
+    }
+
+    renderModeTabs();
+  }
+
   function getCurrentGrid() {
     return APP_STATE.grids.find((g) => g.id === APP_STATE.currentGridId);
   }
@@ -631,22 +683,23 @@
     const activityEl = document.getElementById("gt-view-activity");
     const dashEl = document.getElementById("gt-view-dashboard");
 
+    const mode = APP_STATE.currentMode || "data";
     if (tableEl && boardEl && dashEl && activityEl) {
-      tableEl.classList.toggle("is-hidden", view !== "table");
-      boardEl.classList.toggle("is-hidden", view !== "board");
-      activityEl.classList.toggle("is-hidden", view !== "activity");
-      dashEl.classList.toggle("is-hidden", view !== "dashboard");
+      tableEl.classList.toggle("is-hidden", view !== "table" || mode !== "data");
+      boardEl.classList.toggle("is-hidden", view !== "board" || mode !== "data");
+      activityEl.classList.toggle("is-hidden", view !== "activity" || mode !== "data");
+      dashEl.classList.toggle("is-hidden", view !== "dashboard" || mode !== "dashboard");
     }
 
     if (options.skipRender) return;
 
-    if (view === "table") {
+    if (view === "table" && mode === "data") {
       renderTasks();
-    } else if (view === "board") {
+    } else if (view === "board" && mode === "data") {
       renderBoardView();
-    } else if (view === "activity") {
+    } else if (view === "activity" && mode === "data") {
       renderActivityView();
-    } else if (view === "dashboard" && canViewDashboard()) {
+    } else if (view === "dashboard" && mode === "dashboard" && canViewDashboard()) {
       renderDashboardView();
     }
   }
@@ -830,6 +883,7 @@
     APP_STATE.tasks = [];
     APP_STATE.grids = [];
     APP_STATE.currentGridId = null;
+    APP_STATE.currentMode = "data";
     const savedFilters = (APP_STATE.workspaceFilters && workspaceId)
       ? APP_STATE.workspaceFilters[workspaceId]
       : null;
@@ -839,6 +893,7 @@
     updateWorkspaceShellVisibility();
     renderWorkspaceSelect();
     renderGridTabs();
+    renderModeTabs();
     renderFiltersBar();
     renderTasks();
     renderBoardView();
