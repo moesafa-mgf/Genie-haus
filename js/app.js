@@ -664,10 +664,10 @@
       .join("");
 
     root.innerHTML = `
-      <div class="gt-grid-tabs-left">
-        ${tabs}
+      <div class="gt-grid-tabs-bar">
+        <div class="gt-grid-tab-list">${tabs}</div>
+        <button id="gt-grid-add" class="gt-grid-tab gt-grid-tab-add" title="Add grid">+</button>
       </div>
-      <button id="gt-grid-add" class="gt-button gt-button-small">+ New grid</button>
     `;
 
     root.querySelectorAll("[data-grid]").forEach((btn) => {
