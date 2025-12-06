@@ -12,7 +12,7 @@
     location: null,
     staff: [],
     roles: {}, // email -> role ("admin" | "manager" | "member")
-    workspaces: [{ id: "default", name: "General" }],
+    workspaces: [],
     currentWorkspaceId: null, // workspace must be selected first
     currentView: "table", // "table" | "board" | "dashboard"
     tasks: [],
@@ -22,6 +22,7 @@
   };
 
   const REMOTE_SYNC_API = "/api/workspace-state";
+  const WORKSPACES_API = "/api/workspaces";
   const GHL_USERS_API = "/api/ghl-users";
 
   let draggedTaskId = null;
@@ -54,10 +55,14 @@
           <section class="gt-panel">
             <div class="gt-panel-header">
               <h2>Workspace</h2>
-              <select id="gt-workspace-select" class="gt-select">
-                <option value="">Select workspace…</option>
-                <option value="default">General</option>
-              </select>
+              <div class="gt-workspace-actions">
+                <select id="gt-workspace-select" class="gt-select">
+                  <option value="">Select workspace…</option>
+                </select>
+                <button id="gt-create-workspace" class="gt-button gt-button-primary" style="display:none;">
+                  + New Workspace
+                </button>
+              </div>
             </div>
             <div class="gt-panel-body">
               <div class="gt-field-group">
@@ -200,6 +205,8 @@
 
     updateHeaderUI();
     renderViewTabs(); // rerender view tabs once we know current user
+    updateWorkspaceActionsVisibility();
+    fetchWorkspaces();
   });
 
   function normalizeStaff(list) {
@@ -216,6 +223,42 @@
         return { id: u.id, email: u.email, name };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  // -------- 3b. Workspaces backend --------
+  async function fetchWorkspaces() {
+    if (!APP_STATE.runtime.locationId) return;
+
+    try {
+      const url = `${WORKSPACES_API}?locationId=${encodeURIComponent(
+        APP_STATE.runtime.locationId
+      )}`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) {
+        console.warn("[app] workspaces fetch failed", resp.status, data);
+        return;
+      }
+
+      APP_STATE.workspaces = Array.isArray(data.workspaces)
+        ? data.workspaces
+        : [];
+
+      renderWorkspaceSelect();
+
+      // Auto-select first workspace if none selected
+      if (!APP_STATE.currentWorkspaceId && APP_STATE.workspaces.length) {
+        selectWorkspace(APP_STATE.workspaces[0].id);
+      } else if (
+        APP_STATE.currentWorkspaceId &&
+        !APP_STATE.workspaces.find((w) => w.id === APP_STATE.currentWorkspaceId)
+      ) {
+        // Previously selected workspace no longer exists
+        selectWorkspace(null);
+      }
+    } catch (err) {
+      console.warn("[app] workspaces fetch error", err);
+    }
   }
 
   // -------- 3. Backend staff fetch (PIT, optional) --------
@@ -421,6 +464,50 @@
       APP_STATE.runtime.name ||
       APP_STATE.runtime.email ||
       "Unknown user";
+  }
+
+  function renderWorkspaceSelect() {
+    const sel = document.getElementById("gt-workspace-select");
+    if (!sel) return;
+
+    const current = APP_STATE.currentWorkspaceId || "";
+    sel.innerHTML = "";
+
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = APP_STATE.workspaces.length
+      ? "Select workspace…"
+      : "No workspaces yet";
+    sel.appendChild(placeholder);
+
+    APP_STATE.workspaces.forEach((ws) => {
+      const opt = document.createElement("option");
+      opt.value = ws.id;
+      opt.textContent = ws.name;
+      sel.appendChild(opt);
+    });
+
+    sel.value = current;
+  }
+
+  function selectWorkspace(workspaceId) {
+    APP_STATE.currentWorkspaceId = workspaceId;
+    APP_STATE.tasks = [];
+    updateWorkspaceShellVisibility();
+    renderTasks();
+    renderBoardView();
+    if (APP_STATE.currentView === "dashboard" && canViewDashboard()) {
+      renderDashboardView();
+    }
+    if (workspaceId) {
+      loadRemote();
+    }
+  }
+
+  function updateWorkspaceActionsVisibility() {
+    const createBtn = document.getElementById("gt-create-workspace");
+    if (!createBtn) return;
+    createBtn.style.display = getCurrentUserRole() === "admin" ? "inline-flex" : "none";
   }
 
   function renderAssigneeFilter() {
@@ -817,6 +904,45 @@
     }
   }
 
+  async function createWorkspaceFlow() {
+    if (!APP_STATE.runtime.locationId) {
+      alert("Location is required before creating a workspace.");
+      return;
+    }
+
+    const name = prompt("Workspace name", "New Workspace");
+    if (!name || !name.trim()) return;
+
+    try {
+      const resp = await fetch(WORKSPACES_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          locationId: APP_STATE.runtime.locationId,
+          name: name.trim(),
+          createdBy: APP_STATE.runtime.email || null,
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) {
+        alert("Failed to create workspace");
+        console.warn("[app] create workspace failed", resp.status, data);
+        return;
+      }
+
+      const ws = data.workspace;
+      APP_STATE.workspaces.push(ws);
+      renderWorkspaceSelect();
+      selectWorkspace(ws.id);
+
+      const sel = document.getElementById("gt-workspace-select");
+      if (sel) sel.value = ws.id;
+    } catch (err) {
+      console.warn("[app] create workspace error", err);
+      alert("Unexpected error creating workspace");
+    }
+  }
+
   // -------- 12. Init --------
   document.addEventListener("DOMContentLoaded", () => {
     buildLayout();
@@ -826,6 +952,7 @@
     renderTasks();
     renderBoardView();
     updateWorkspaceShellVisibility();
+    updateWorkspaceActionsVisibility();
 
     const addBtn = document.getElementById("gt-add-task");
     if (addBtn) addBtn.onclick = addTask;
@@ -834,19 +961,23 @@
     if (wsSelect) {
       wsSelect.value = ""; // start on "Select workspace…"
       wsSelect.addEventListener("change", () => {
-        APP_STATE.currentWorkspaceId = wsSelect.value || null;
-        updateWorkspaceShellVisibility();
-        if (APP_STATE.currentWorkspaceId) {
-          loadRemote();
-          if (APP_STATE.currentView === "dashboard" && canViewDashboard()) {
-            renderDashboardView();
-          }
-        }
+        selectWorkspace(wsSelect.value || null);
       });
+    }
+
+    const createBtn = document.getElementById("gt-create-workspace");
+    if (createBtn) {
+      createBtn.onclick = () => {
+        if (getCurrentUserRole() !== "admin") return;
+        createWorkspaceFlow();
+      };
     }
 
     // Staff fetch (gets users / assignees from GHL)
     fetchStaffBackend();
+
+    // Workspaces fetch (once location is known)
+    fetchWorkspaces();
 
     // Poll for remote changes every 5s (no-op until workspace selected)
     setInterval(loadRemote, 5000);

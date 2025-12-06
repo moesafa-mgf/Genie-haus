@@ -192,6 +192,12 @@ body {
   background: #f9fafb;
 }
 
+.gt-workspace-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .gt-panel-header h2 {
   margin: 0;
   font-size: 12px;
