@@ -984,19 +984,19 @@ a:hover {
 .gt-filter-bar {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px 14px;
+  gap: 12px;
+  padding: 12px 16px;
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #fbfbfd;
+  border-radius: 14px;
+  background: #ffffff;
   margin-bottom: 10px;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
 }
 
 .gt-filter-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 14px;
   align-items: center;
 }
 
@@ -1020,31 +1020,34 @@ a:hover {
 
 .gt-filter-bar .gt-input,
 .gt-filter-bar .gt-select {
-  min-width: 160px;
-  height: 40px;
-  border-radius: 12px;
-  border: 1px solid #d7dbe3;
-  background: #fff;
-  padding: 6px 12px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  min-width: 170px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid #dfe4ec;
+  background: #ffffff;
+  padding: 8px 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .gt-filter-bar .gt-input:focus,
 .gt-filter-bar .gt-select:focus {
-  border-color: #94a3b8;
-  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.2);
+  border-color: #b6c2d1;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.16);
 }
 
 .gt-filter-bar label {
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: #6b7280;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #9aa3b5;
+  font-size: 11px;
+  text-transform: uppercase;
 }
 
 .gt-filter-bar .gt-button {
-  height: 40px;
+  height: 38px;
   border-radius: 10px;
-  padding: 0 12px;
+  padding: 0 14px;
+  font-weight: 600;
 }
 
 .gt-table {
