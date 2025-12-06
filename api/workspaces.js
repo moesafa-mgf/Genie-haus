@@ -37,7 +37,9 @@ function getIdFromPath(req) {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
     const parts = url.pathname.split("/").filter(Boolean); // [api, workspaces, :id?]
-    return parts[2] || null;
+    const pathId = parts[2] || null;
+    const queryId = url.searchParams.get("id") || null;
+    return pathId || queryId;
   } catch (_) {
     return null;
   }
