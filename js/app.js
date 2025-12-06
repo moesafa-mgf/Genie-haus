@@ -11,7 +11,7 @@
     },
     location: null,
     staff: [],
-    roles: {}, // email -> role ("admin" | "manager" | "member")
+    workspaceRoles: {}, // workspaceId -> { email: role }
     workspaces: [],
     currentWorkspaceId: null, // workspace must be selected first
     currentView: "table", // "table" | "board" | "dashboard"
@@ -23,6 +23,7 @@
 
   const REMOTE_SYNC_API = "/api/workspace-state";
   const WORKSPACES_API = "/api/workspaces";
+  const WORKSPACE_ROLES_API = "/api/workspace-roles";
   const GHL_USERS_API = "/api/ghl-users";
 
   let draggedTaskId = null;
@@ -71,6 +72,7 @@
                   <option value="">All assignees</option>
                 </select>
               </div>
+              <div id="gt-roles-panel" class="gt-roles-panel"></div>
             </div>
           </section>
 
@@ -145,16 +147,10 @@
   // -------- 1. Role helpers --------
   function getCurrentUserRole() {
     const email = APP_STATE.runtime.email || "";
-    if (!email) return "member";
-    const roles = APP_STATE.roles || {};
-
-    // TEMP: default current user to admin if not explicitly set
-    if (!roles[email]) {
-      roles[email] = "admin";
-      APP_STATE.roles = roles;
-    }
-
-    return roles[email] || "member";
+    const wsId = APP_STATE.currentWorkspaceId;
+    if (!email || !wsId) return "member";
+    const roles = APP_STATE.workspaceRoles[wsId] || {};
+    return roles[email.toLowerCase()] || "admin"; // default to admin when no role set
   }
 
   function canViewDashboard() {
@@ -246,6 +242,11 @@
 
       renderWorkspaceSelect();
 
+      // fetch roles for selected workspace if present
+      if (APP_STATE.currentWorkspaceId) {
+        fetchWorkspaceRoles(APP_STATE.currentWorkspaceId);
+      }
+
       // Auto-select first workspace if none selected
       if (!APP_STATE.currentWorkspaceId && APP_STATE.workspaces.length) {
         selectWorkspace(APP_STATE.workspaces[0].id);
@@ -258,6 +259,39 @@
       }
     } catch (err) {
       console.warn("[app] workspaces fetch error", err);
+    }
+  }
+
+  async function fetchWorkspaceRoles(workspaceId) {
+    if (!workspaceId || !APP_STATE.runtime.locationId || !APP_STATE.runtime.email)
+      return;
+
+    try {
+      const url = `${WORKSPACE_ROLES_API}?locationId=${encodeURIComponent(
+        APP_STATE.runtime.locationId
+      )}&workspaceId=${encodeURIComponent(workspaceId)}`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) {
+        console.warn("[app] workspace roles fetch failed", resp.status, data);
+        return;
+      }
+
+      const map = {};
+      (data.roles || []).forEach((r) => {
+        if (r.user_email && r.role) {
+          map[r.user_email.toLowerCase()] = r.role;
+        }
+      });
+      APP_STATE.workspaceRoles[workspaceId] = map;
+      updateWorkspaceActionsVisibility();
+      renderViewTabs();
+      if (!canViewDashboard() && APP_STATE.currentView === "dashboard") {
+        setActiveView("table");
+      }
+      renderRolesPanel();
+    } catch (err) {
+      console.warn("[app] workspace roles fetch error", err);
     }
   }
 
@@ -316,7 +350,9 @@
     try {
       const url = `${REMOTE_SYNC_API}?locationId=${encodeURIComponent(
         APP_STATE.runtime.locationId
-      )}&workspaceId=${encodeURIComponent(APP_STATE.currentWorkspaceId)}`;
+      )}&workspaceId=${encodeURIComponent(APP_STATE.currentWorkspaceId)}&userEmail=${encodeURIComponent(
+        APP_STATE.runtime.email || ""
+      )}`;
       console.log("[app] GET", url);
       const resp = await fetch(url);
       const data = await resp.json();
@@ -325,6 +361,16 @@
         setSyncStatus("error");
         return;
       }
+      if (data.role && APP_STATE.currentWorkspaceId) {
+        const map = APP_STATE.workspaceRoles[APP_STATE.currentWorkspaceId] || {};
+        if (APP_STATE.runtime.email) {
+          map[APP_STATE.runtime.email.toLowerCase()] = data.role;
+          APP_STATE.workspaceRoles[APP_STATE.currentWorkspaceId] = map;
+        }
+        updateWorkspaceActionsVisibility();
+        renderViewTabs();
+      }
+
       if (data.state && Array.isArray(data.state.tasks)) {
         APP_STATE.tasks = data.state.tasks;
         renderTasks();
@@ -356,6 +402,7 @@
         body: JSON.stringify({
           locationId: APP_STATE.runtime.locationId,
           workspaceId: APP_STATE.currentWorkspaceId,
+          userEmail: APP_STATE.runtime.email || null,
           state: { tasks: APP_STATE.tasks },
         }),
       });
@@ -364,6 +411,21 @@
         console.warn("[app] pushState failed", resp.status, data);
         setSyncStatus("error");
         return;
+      }
+      if (data.role && APP_STATE.currentWorkspaceId && APP_STATE.runtime.email) {
+        const map = APP_STATE.workspaceRoles[APP_STATE.currentWorkspaceId] || {};
+        map[APP_STATE.runtime.email.toLowerCase()] = data.role;
+        APP_STATE.workspaceRoles[APP_STATE.currentWorkspaceId] = map;
+        updateWorkspaceActionsVisibility();
+        renderViewTabs();
+      }
+      if (data.state && Array.isArray(data.state.tasks)) {
+        APP_STATE.tasks = data.state.tasks;
+        renderTasks();
+        renderBoardView();
+        if (APP_STATE.currentView === "dashboard" && canViewDashboard()) {
+          renderDashboardView();
+        }
       }
       setSyncStatus("ok");
     } catch (err) {
@@ -493,6 +555,8 @@
   function selectWorkspace(workspaceId) {
     APP_STATE.currentWorkspaceId = workspaceId;
     APP_STATE.tasks = [];
+    renderViewTabs();
+    updateWorkspaceActionsVisibility();
     updateWorkspaceShellVisibility();
     renderTasks();
     renderBoardView();
@@ -500,6 +564,7 @@
       renderDashboardView();
     }
     if (workspaceId) {
+      fetchWorkspaceRoles(workspaceId);
       loadRemote();
     }
   }
@@ -508,6 +573,91 @@
     const createBtn = document.getElementById("gt-create-workspace");
     if (!createBtn) return;
     createBtn.style.display = getCurrentUserRole() === "admin" ? "inline-flex" : "none";
+  }
+
+  function renderRolesPanel() {
+    const panel = document.getElementById("gt-roles-panel");
+    if (!panel) return;
+
+    const role = getCurrentUserRole();
+    if (role !== "admin") {
+      panel.innerHTML = "";
+      panel.style.display = "none";
+      return;
+    }
+
+    panel.style.display = "block";
+
+    const wsId = APP_STATE.currentWorkspaceId;
+    const roles = wsId ? APP_STATE.workspaceRoles[wsId] || {} : {};
+    const entries = Object.entries(roles);
+
+    let listHtml = "<div class=\"gt-role-list\">";
+    if (!entries.length) {
+      listHtml += "<div class=\"gt-muted\">No roles yet.</div>";
+    } else {
+      entries.forEach(([email, r]) => {
+        listHtml += `<div class="gt-role-row"><span>${email}</span><span class="gt-chip gt-chip-plain">${r}</span></div>`;
+      });
+    }
+    listHtml += "</div>";
+
+    panel.innerHTML = `
+      <div class="gt-field-group">
+        <label>Workspace roles</label>
+        ${listHtml}
+      </div>
+      <div class="gt-role-form">
+        <input id="gt-role-email" class="gt-input" type="email" placeholder="user@example.com" />
+        <select id="gt-role-select" class="gt-select">
+          <option value="admin">Admin</option>
+          <option value="manager">Manager</option>
+          <option value="member">Member</option>
+        </select>
+        <button id="gt-role-save" class="gt-button gt-button-primary">Save Role</button>
+      </div>
+    `;
+
+    const saveBtn = document.getElementById("gt-role-save");
+    const emailInput = document.getElementById("gt-role-email");
+    const roleSelect = document.getElementById("gt-role-select");
+
+    if (saveBtn && emailInput && roleSelect) {
+      saveBtn.onclick = async () => {
+        const email = (emailInput.value || "").trim().toLowerCase();
+        const newRole = roleSelect.value;
+        if (!email) return alert("Enter an email to assign a role.");
+        if (!wsId || !APP_STATE.runtime.locationId) return;
+
+        try {
+          const resp = await fetch(WORKSPACE_ROLES_API, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              locationId: APP_STATE.runtime.locationId,
+              workspaceId: wsId,
+              userEmail: email,
+              role: newRole,
+            }),
+          });
+          const data = await resp.json();
+          if (!resp.ok || !data.ok) {
+            alert("Failed to save role");
+            console.warn("[app] save role failed", resp.status, data);
+            return;
+          }
+          const map = APP_STATE.workspaceRoles[wsId] || {};
+          map[email] = newRole;
+          APP_STATE.workspaceRoles[wsId] = map;
+          renderRolesPanel();
+          renderViewTabs();
+          updateWorkspaceActionsVisibility();
+        } catch (err) {
+          console.warn("[app] save role error", err);
+          alert("Unexpected error saving role");
+        }
+      };
+    }
   }
 
   function renderAssigneeFilter() {
@@ -953,6 +1103,7 @@
     renderBoardView();
     updateWorkspaceShellVisibility();
     updateWorkspaceActionsVisibility();
+    renderRolesPanel();
 
     const addBtn = document.getElementById("gt-add-task");
     if (addBtn) addBtn.onclick = addTask;

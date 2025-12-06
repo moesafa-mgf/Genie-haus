@@ -212,6 +212,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
+  gap: 8px;
 }
 
 /* =========================
@@ -328,6 +329,57 @@ body {
 
 .gt-button-danger:hover {
   background: #fee2e2;
+}
+
+/* Roles panel */
+.gt-roles-panel {
+  border-top: 1px dashed var(--gt-border-subtle);
+  padding-top: 6px;
+}
+
+.gt-role-form {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+  align-items: center;
+}
+
+.gt-input {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--gt-border-subtle);
+  background: #ffffff;
+  color: #111827;
+  outline: none;
+}
+
+.gt-input:focus {
+  border-color: var(--gt-accent);
+  box-shadow: 0 0 0 1px rgba(79, 70, 229, 0.25);
+}
+
+.gt-role-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gt-role-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 6px;
+  border: 1px solid var(--gt-border-subtle);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.gt-chip-plain {
+  background: #f3f4f6;
+  border: 1px solid var(--gt-border-subtle);
+  color: #111827;
 }
 
 /* =========================
