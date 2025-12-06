@@ -498,6 +498,28 @@
 
     const canCreate = getCurrentUserRole() === "admin";
     const filtered = APP_STATE.workspaces;
+    const emojiChoices = [
+      "🔮",
+      "📋",
+      "✅",
+      "📊",
+      "🚀",
+      "🛠️",
+      "🧠",
+      "🎯",
+      "📌",
+      "📦",
+      "📈",
+      "🧩",
+      "🗂️",
+      "🧾",
+      "🏗️",
+      "🛰️",
+      "⚡",
+      "🌟",
+      "🏁",
+      "🧭",
+    ];
 
     const items = filtered
       .map((ws) => {
@@ -519,6 +541,27 @@
               </div>
               ${canCreate ? '<button class="gt-workspace-picker-gear" title="Settings">⚙</button>' : ""}
             </div>
+            ${
+              canCreate
+                ? `
+              <div class="gt-picker-inline" data-wsid="${ws.id}">
+                <div class="gt-picker-inline-label">Icon</div>
+                <div class="gt-emoji-mini-grid">
+                  ${emojiChoices
+                    .map(
+                      (e) =>
+                        `<button class="gt-emoji-mini" data-wsid="${ws.id}" data-emoji="${e}" title="Set icon to ${e}">${e}</button>`
+                    )
+                    .join("")}
+                </div>
+                <div class="gt-emoji-mini-row">
+                  <input class="gt-emoji-mini-input" data-wsid="${ws.id}" type="text" placeholder="Paste emoji" value="${iconVal}" />
+                  <button class="gt-emoji-mini-save" data-wsid="${ws.id}">Save</button>
+                </div>
+              </div>
+              `
+                : ""
+            }
           </div>
         `;
       })
@@ -553,6 +596,30 @@
           const id = el.getAttribute("data-id");
           openWorkspaceSettings(id);
         };
+      }
+      if (canCreate) {
+        el.querySelectorAll(".gt-emoji-mini").forEach((btn) => {
+          btn.onclick = async (e) => {
+            e.stopPropagation();
+            const wsid = btn.getAttribute("data-wsid");
+            const emoji = btn.getAttribute("data-emoji");
+            await patchWorkspace(wsid, { iconUrl: emoji });
+          };
+        });
+        const input = el.querySelector(".gt-emoji-mini-input");
+        if (input) {
+          input.onclick = (e) => e.stopPropagation();
+          input.onkeydown = (e) => e.stopPropagation();
+        }
+        const saveBtn = el.querySelector(".gt-emoji-mini-save");
+        if (saveBtn) {
+          saveBtn.onclick = async (e) => {
+            e.stopPropagation();
+            const wsid = saveBtn.getAttribute("data-wsid");
+            const val = (input?.value || "").trim() || null;
+            await patchWorkspace(wsid, { iconUrl: val });
+          };
+        }
       }
     });
 
@@ -787,7 +854,10 @@
     if (renameBtn && nameInput) {
       renameBtn.onclick = async () => {
         const newName = nameInput.value.trim();
-        if (!newName) return alert("Name is required");
+        if (!newName) {
+          showToast("Name is required", "error");
+          return;
+        }
         const updated = await patchWorkspace(ws.id, { name: newName });
         if (updated) showToast("Workspace renamed", "success");
       };
@@ -819,7 +889,7 @@
         const data = await resp.json();
         if (!resp.ok || !data.ok) {
           console.warn("[app] delete role failed", resp.status, data);
-          alert("Failed to remove role");
+            showToast("Failed to remove role", "error");
           return;
         }
         const map = APP_STATE.workspaceRoles[workspaceId] || {};
@@ -827,7 +897,7 @@
         APP_STATE.workspaceRoles[workspaceId] = map;
       } catch (err) {
         console.warn("[app] delete role error", err);
-        alert("Unexpected error removing role");
+          showToast("Unexpected error removing role", "error");
       }
       return;
     }
@@ -846,7 +916,7 @@
       const data = await resp.json();
       if (!resp.ok || !data.ok) {
         console.warn("[app] save role failed", resp.status, data);
-        alert("Failed to save role");
+        showToast("Failed to save role", "error");
         return;
       }
       const map = APP_STATE.workspaceRoles[workspaceId] || {};
@@ -855,13 +925,13 @@
       showToast("Role updated", "success");
     } catch (err) {
       console.warn("[app] save role error", err);
-      alert("Unexpected error saving role");
+      showToast("Unexpected error saving role", "error");
     }
   }
 
   async function patchWorkspace(id, payload) {
     if (!id) {
-      alert("No workspace selected to update.");
+      showToast("No workspace selected to update.", "error");
       return null;
     }
     const cleanPayload = {};
@@ -889,13 +959,13 @@
           text = `(unreadable response: ${tErr})`;
         }
         console.warn("[app] patch workspace parse error", parseErr, text);
-        alert(`Failed to update workspace (bad response). ${text}`);
+        showToast(`Failed to update workspace (bad response). ${text}`, "error");
         return null;
       }
       if (!resp.ok || !data.ok) {
         const detail = data?.detail || data?.error || `HTTP ${resp.status}`;
         console.warn("[app] patch workspace failed", resp.status, data);
-        alert(`Failed to update workspace: ${detail}`);
+        showToast(`Failed to update workspace: ${detail}`, "error");
         return null;
       }
       APP_STATE.workspaces = APP_STATE.workspaces.map((w) =>
@@ -911,7 +981,7 @@
     } catch (err) {
       console.warn("[app] patch workspace error", err);
       const msg = err?.message || String(err) || "Unknown error";
-      alert(`Unexpected error updating workspace: ${msg}`);
+      showToast(`Unexpected error updating workspace: ${msg}`, "error");
       return null;
     }
   }
@@ -1310,7 +1380,7 @@
 
   async function createWorkspaceFlow() {
     if (!APP_STATE.runtime.locationId) {
-      alert("Location is required before creating a workspace.");
+      showToast("Location is required before creating a workspace.", "error");
       return;
     }
 
@@ -1329,7 +1399,7 @@
       });
       const data = await resp.json();
       if (!resp.ok || !data.ok) {
-        alert("Failed to create workspace");
+        showToast("Failed to create workspace", "error");
         console.warn("[app] create workspace failed", resp.status, data);
         return;
       }
@@ -1343,7 +1413,7 @@
       if (sel) sel.value = ws.id;
     } catch (err) {
       console.warn("[app] create workspace error", err);
-      alert("Unexpected error creating workspace");
+      showToast("Unexpected error creating workspace", "error");
     }
   }
 
