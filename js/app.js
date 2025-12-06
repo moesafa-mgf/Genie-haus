@@ -135,7 +135,9 @@
   function getCurrentUserRole() {
     const email = APP_STATE.runtime.email || "";
     const wsId = APP_STATE.currentWorkspaceId;
-    if (!email || !wsId) return "member";
+    // If no workspace is selected yet, let admins proceed (chooser needs this)
+    if (!wsId) return "admin";
+    if (!email) return "member";
     const roles = APP_STATE.workspaceRoles[wsId] || {};
     return roles[email.toLowerCase()] || "admin"; // default to admin when no role set
   }
