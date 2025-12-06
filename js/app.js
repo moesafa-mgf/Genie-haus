@@ -2648,6 +2648,11 @@
         tr.classList.toggle("is-row-selected", selectBox.checked);
       });
 
+      const indexWrap = document.createElement("span");
+      indexWrap.className = "gt-row-index";
+      indexWrap.appendChild(rowNum);
+      indexWrap.appendChild(selectBox);
+
       const divider = document.createElement("span");
       divider.className = "gt-row-divider";
 
@@ -2663,8 +2668,7 @@
       const leadInner = document.createElement("div");
       leadInner.className = "gt-row-leading-inner";
       leadInner.appendChild(handle);
-      leadInner.appendChild(rowNum);
-      leadInner.appendChild(selectBox);
+      leadInner.appendChild(indexWrap);
       leadInner.appendChild(divider);
       leadInner.appendChild(expandBtn);
 

@@ -1278,9 +1278,9 @@ a:hover {
 
 .gt-col-leading,
 .gt-row-leading {
-  width: 44px;
+  width: 38px;
   text-align: center;
-  padding: 0 6px;
+  padding: 0 4px;
 }
 
 .gt-row-leading {
@@ -1371,23 +1371,39 @@ tr:hover .gt-row-leading .gt-row-open {
 }
 
 .gt-row-leading-inner {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   justify-content: center;
+}
+
+.gt-row-index {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+}
+
+.gt-row-number,
+.gt-row-select {
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.12s ease;
 }
 
 .gt-row-number {
   font-size: 12px;
   color: #4b5563;
-  min-width: 14px;
-  transition: opacity 0.12s ease;
 }
 
 .gt-row-select {
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.12s ease;
   width: 16px;
   height: 16px;
   accent-color: #4f46e5;
