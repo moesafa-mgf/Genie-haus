@@ -1277,13 +1277,12 @@
     if (!anchor) return;
     const menu = document.createElement("div");
     menu.className = "gt-col-menu";
-    const deleteDisabled = col.locked ? "disabled" : "";
     menu.innerHTML = `
       <button class="gt-col-menu-item" data-action="edit">Edit field</button>
       <button class="gt-col-menu-item" data-action="duplicate">Duplicate field</button>
       <button class="gt-col-menu-item" data-action="insert-left">Insert left</button>
       <button class="gt-col-menu-item" data-action="insert-right">Insert right</button>
-      <button class="gt-col-menu-item ${col.locked ? "is-disabled" : "is-danger"}" data-action="delete" ${deleteDisabled}>${col.locked ? "Locked" : "Delete field"}</button>
+      <button class="gt-col-menu-item is-danger" data-action="delete">Delete field</button>
     `;
 
     menu.onclick = (e) => {
@@ -1337,7 +1336,7 @@
     const options = Array.isArray(col.options)
       ? col.options.map((o) => ({ ...o }))
       : [];
-    const isLocked = !!col.locked;
+    const isLocked = false;
 
     const typeOptions = FIELD_TYPES.map(
       (t) => `<option value="${t.value}">${t.label}</option>`
@@ -1356,10 +1355,10 @@
 
         <div class="gt-modal-section gt-edit-form">
           <label class="gt-modal-label">Field name</label>
-          <input id="gt-edit-name" class="gt-input" type="text" value="${col.label}" ${isLocked ? "disabled" : ""} />
+          <input id="gt-edit-name" class="gt-input" type="text" value="${col.label}" />
 
           <label class="gt-modal-label">Type</label>
-          <select id="gt-edit-type" class="gt-select" ${isLocked ? "disabled" : ""}>${typeOptions}</select>
+          <select id="gt-edit-type" class="gt-select">${typeOptions}</select>
 
           <div class="gt-edit-options-block" id="gt-edit-options-block" style="display:${isSelectType(col.type) ? "flex" : "none"};">
             <div class="gt-modal-label">Options</div>
@@ -1419,21 +1418,17 @@
           labelInput.oninput = () => {
             options[idx].label = labelInput.value;
           };
-          labelInput.disabled = isLocked;
         }
         if (colorSelect) {
           colorSelect.onchange = () => {
             options[idx].color = colorSelect.value;
           };
-          colorSelect.disabled = isLocked;
         }
         if (removeBtn) {
           removeBtn.onclick = () => {
-            if (isLocked) return;
             options.splice(idx, 1);
             renderOptionRows();
           };
-          removeBtn.disabled = isLocked;
         }
       });
     };
@@ -1469,7 +1464,6 @@
 
     if (addBtn) {
       addBtn.onclick = () => {
-        if (isLocked) return;
         options.push({
           id: `opt_${Math.random().toString(36).slice(2, 6)}`,
           label: `Option ${options.length + 1}`,
@@ -1477,16 +1471,13 @@
         });
         renderOptionRows();
       };
-      addBtn.disabled = isLocked;
     }
 
     if (sortBtn) {
       sortBtn.onclick = () => {
-        if (isLocked) return;
         options.sort((a, b) => (a.label || "").localeCompare(b.label || ""));
         renderOptionRows();
       };
-      sortBtn.disabled = isLocked;
     }
 
     const doClose = () => {
@@ -1503,11 +1494,6 @@
 
     if (saveBtn) {
       saveBtn.onclick = () => {
-        if (isLocked) {
-          showToast("Locked field cannot be edited", "error");
-          doClose();
-          return;
-        }
         const name = (nameInput?.value || "").trim();
         if (name) {
           col.label = name;

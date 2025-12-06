@@ -1,6 +1,7 @@
 .gt-chooser-page {
   width: 100%;
   height: 100%;
+    overflow: visible;
   display: none;
 }
 
@@ -9,43 +10,57 @@
   align-items: flex-start;
   justify-content: center;
   padding: 24px 16px;
+    white-space: nowrap;
+    overflow: visible;
+  }
+
+  .gt-table th:last-child,
+  .gt-table td:last-child {
+    border-right: none;
 }
+  .gt-col-header {
+    position: relative;
+    padding-right: 10px;
+  }
 
-.gt-chooser-shell {
-  width: min(960px, 96vw);
-  background: #fff;
-  border: 1px solid var(--gt-border-subtle);
-  border-radius: 14px;
-  box-shadow: var(--gt-shadow-soft);
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
+  .gt-col-menu-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: transparent;
+    cursor: pointer;
+    color: #111827;
+    font-size: 12px;
+    text-transform: none;
+    width: 100%;
+    justify-content: space-between;
+    position: relative;
+  }
 
-.gt-chooser-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-/* =========================
-   RESET / BASE
-   ========================= */
+  .gt-col-menu-trigger:hover {
+    background: #f3f4f6;
+    border-color: var(--gt-border-subtle);
+  }
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
+  .gt-col-menu-trigger:focus-visible {
+    outline: 2px solid var(--gt-accent);
+    outline-offset: 1px;
+  }
 
-:root {
-  --gt-bg-page: transparent;        /* let GHL background show through */
-  --gt-bg-card: #ffffff;
-  --gt-bg-card-soft: #f9fafb;
+  .gt-col-title {
+    font-size: 12px;
+    text-transform: none;
+    color: #111827;
+    font-weight: 600;
+  }
 
-  --gt-border-subtle: #e5e7eb;
-  --gt-border-strong: #d1d5db;
-
+  .gt-col-caret {
+    font-size: 10px;
+    color: #6b7280;
+  }
   --gt-text-main: #111827;
   --gt-text-muted: #6b7280;
   --gt-text-soft: #9ca3af;
@@ -925,7 +940,6 @@ body {
   color: #9ca3af;
   cursor: not-allowed;
 }
-  white-space: nowrap;
 }
 
 .gt-table th:last-child,
