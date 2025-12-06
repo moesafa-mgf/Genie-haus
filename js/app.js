@@ -72,6 +72,17 @@
     { value: "percent", label: "Percent" },
     { value: "duration", label: "Duration" },
     { value: "rating", label: "Rating" },
+    { value: "autonumber", label: "Autonumber" },
+    { value: "barcode", label: "Barcode" },
+    { value: "button", label: "Button" },
+    { value: "formula", label: "Formula" },
+    { value: "rollup", label: "Rollup" },
+    { value: "count", label: "Count" },
+    { value: "lookup", label: "Lookup" },
+    { value: "created_time", label: "Created time" },
+    { value: "last_modified_time", label: "Last modified time" },
+    { value: "created_by", label: "Created by" },
+    { value: "last_modified_by", label: "Last modified by" },
   ];
   const OPTION_COLORS = ["gray", "blue", "green", "red", "yellow", "purple", "pink", "teal"];
 
@@ -2142,11 +2153,16 @@
       return [];
     };
 
-    const getValue = (task, col) => {
+    const getValue = (task, col, rowIndex = 0) => {
       if (col.id === "title") return task.title || "";
       if (col.id === "status") return task.status || "todo";
       if (col.id === "assignee") return task.assigneeEmail || "";
       if (col.id === "updatedAt") return task.updatedAt || null;
+      if (col.type === "autonumber") return rowIndex || 0;
+      if (col.type === "created_time") return task.createdAt || null;
+      if (col.type === "last_modified_time") return task.updatedAt || null;
+      if (col.type === "created_by") return task.createdBy || null;
+      if (col.type === "last_modified_by") return task.updatedBy || null;
       const fields = task.fields || {};
       return fields[col.id];
     };
@@ -2165,6 +2181,9 @@
         return;
       }
       if (col.id === "updatedAt") return;
+      if (["autonumber", "created_time", "last_modified_time", "created_by", "last_modified_by", "button", "barcode", "formula", "rollup", "count", "lookup"].includes(col.type)) {
+        return; // derived / read-only
+      }
       task.fields = task.fields || {};
       task.fields[col.id] = val;
     };
@@ -2186,12 +2205,15 @@
       });
     };
 
+    let rowNumber = 0;
+
     const makeRow = (task) => {
+      const displayIndex = ++rowNumber;
       const tr = document.createElement("tr");
 
       columns.forEach((col) => {
         const td = document.createElement("td");
-        const current = getValue(task, col);
+        const current = getValue(task, col, displayIndex);
         const prev = current;
 
         if (col.id === "updatedAt") {
@@ -2201,6 +2223,11 @@
         }
 
         switch (col.type) {
+          case "autonumber": {
+            td.innerHTML = `<span class="gt-pill">${current ?? ""}</span>`;
+            tr.appendChild(td);
+            break;
+          }
           case "text": {
             const inp = document.createElement("input");
             inp.className = "gt-task-title-input";
@@ -2326,6 +2353,43 @@
             };
             td.appendChild(inp);
             enableCellQuickFocus(td, inp);
+            break;
+          }
+          case "barcode": {
+            td.innerHTML = `<span class="gt-pill">${current || "—"}</span>`;
+            tr.appendChild(td);
+            break;
+          }
+          case "button": {
+            const btn = document.createElement("button");
+            btn.className = "gt-button gt-button-small";
+            btn.textContent = "Open";
+            btn.onclick = (e) => {
+              e.stopPropagation();
+              openDetailDrawer(task.id);
+            };
+            td.appendChild(btn);
+            break;
+          }
+          case "formula":
+          case "rollup":
+          case "count":
+          case "lookup": {
+            td.innerHTML = `<span class="gt-muted">${current ?? "—"}</span>`;
+            tr.appendChild(td);
+            break;
+          }
+          case "created_time":
+          case "last_modified_time": {
+            td.innerHTML = `<span class="gt-tiny">${formatDateTimeShort(current)}</span>`;
+            tr.appendChild(td);
+            break;
+          }
+          case "created_by":
+          case "last_modified_by": {
+            const val = current || "Unknown";
+            td.innerHTML = `<span class="gt-pill gt-pill-soft">${val}</span>`;
+            tr.appendChild(td);
             break;
           }
           case "attachment": {
@@ -2703,6 +2767,10 @@
       };
 
       switch (col.type) {
+        case "autonumber": {
+          controlHolder.innerHTML = `<span class="gt-pill">${value ?? ""}</span>`;
+          break;
+        }
         case "text": {
           const inp = document.createElement("input");
           inp.className = "gt-input";
@@ -2782,6 +2850,35 @@
             setValue(col, next, prev);
           };
           controlHolder.appendChild(inp);
+          break;
+        }
+        case "barcode": {
+          controlHolder.innerHTML = `<span class="gt-pill">${value || "—"}</span>`;
+          break;
+        }
+        case "button": {
+          const btn = document.createElement("button");
+          btn.className = "gt-button";
+          btn.textContent = "Open record";
+          btn.onclick = () => openDetailDrawer(task.id);
+          controlHolder.appendChild(btn);
+          break;
+        }
+        case "formula":
+        case "rollup":
+        case "count":
+        case "lookup": {
+          controlHolder.innerHTML = `<span class="gt-muted">${value ?? "—"}</span>`;
+          break;
+        }
+        case "created_time":
+        case "last_modified_time": {
+          controlHolder.innerHTML = `<span class="gt-tiny">${formatDateTimeShort(value)}</span>`;
+          break;
+        }
+        case "created_by":
+        case "last_modified_by": {
+          controlHolder.innerHTML = `<span class="gt-pill gt-pill-soft">${value || "Unknown"}</span>`;
           break;
         }
         default: {
@@ -3035,6 +3132,7 @@
       task.createdAt = new Date().toISOString();
     }
     task.updatedAt = new Date().toISOString();
+    task.updatedBy = APP_STATE.runtime.email || task.updatedBy || null;
     schedulePush();
   }
 
@@ -3079,8 +3177,10 @@
       title: "New Task",
       status: "todo",
       assigneeEmail: APP_STATE.runtime.email || "",
+      createdBy: APP_STATE.runtime.email || null,
       createdAt: now,
       updatedAt: now,
+      updatedBy: APP_STATE.runtime.email || null,
       completedAt: null,
     };
     APP_STATE.tasks.push(task);
