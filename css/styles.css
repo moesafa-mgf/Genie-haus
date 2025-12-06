@@ -984,19 +984,20 @@ a:hover {
 .gt-filter-bar {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 8px 10px;
-  border: 1px solid var(--gt-border-subtle);
-  border-radius: 8px;
-  background: #ffffff;
-  margin-bottom: 8px;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fbfbfd;
+  margin-bottom: 10px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
 }
 
 .gt-filter-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 10px;
-  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
 }
 
 .gt-filter-group {
@@ -1015,6 +1016,35 @@ a:hover {
 .gt-filter-actions {
   display: flex;
   align-items: flex-end;
+}
+
+.gt-filter-bar .gt-input,
+.gt-filter-bar .gt-select {
+  min-width: 160px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid #d7dbe3;
+  background: #fff;
+  padding: 6px 12px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.gt-filter-bar .gt-input:focus,
+.gt-filter-bar .gt-select:focus {
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.2);
+}
+
+.gt-filter-bar label {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #6b7280;
+}
+
+.gt-filter-bar .gt-button {
+  height: 40px;
+  border-radius: 10px;
+  padding: 0 12px;
 }
 
 .gt-table {
