@@ -635,6 +635,7 @@
   }
 
   function setActiveGrid(gridId) {
+    persistCurrentGridFilters();
     const grid = APP_STATE.grids.find((g) => g.id === gridId);
     if (!grid) return;
     APP_STATE.currentGridId = gridId;
@@ -904,12 +905,21 @@
     APP_STATE.filters = { ...defaultFilters(), ...active.filters };
   }
 
+  function persistCurrentGridFilters() {
+    const active = APP_STATE.grids.find((g) => g.id === APP_STATE.currentGridId);
+    if (!active) return;
+    active.filters = { ...defaultFilters(), ...APP_STATE.filters };
+    if (APP_STATE.currentWorkspaceId) {
+      APP_STATE.workspaceFilters[APP_STATE.currentWorkspaceId] = { ...APP_STATE.filters };
+    }
+  }
+
   function createAndActivateGrid(name) {
     ensureDefaultGrid();
     const grid = {
       id: `grid_${Math.random().toString(36).slice(2, 6)}`,
       name: name || `Grid ${APP_STATE.grids.length + 1}`,
-      filters: { ...APP_STATE.filters },
+      filters: { ...defaultFilters() },
     };
     APP_STATE.grids.push(grid);
     setActiveGrid(grid.id);
