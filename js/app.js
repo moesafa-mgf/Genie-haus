@@ -2356,16 +2356,16 @@
       const handle = document.createElement("span");
       handle.className = "gt-row-handle";
       handle.textContent = "⋮⋮";
-      const openBtn = document.createElement("button");
-      openBtn.className = "gt-row-open";
-      openBtn.title = "Open record";
-      openBtn.textContent = "⤢";
-      openBtn.onclick = (e) => {
+      const leadOpenBtn = document.createElement("button");
+      leadOpenBtn.className = "gt-row-open";
+      leadOpenBtn.title = "Open record";
+      leadOpenBtn.textContent = "⤢";
+      leadOpenBtn.onclick = (e) => {
         e.stopPropagation();
         openDetailDrawer(task.id);
       };
       lead.appendChild(handle);
-      lead.appendChild(openBtn);
+      lead.appendChild(leadOpenBtn);
       tr.appendChild(lead);
 
       columns.forEach((col) => {
