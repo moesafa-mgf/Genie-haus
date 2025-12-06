@@ -1542,7 +1542,7 @@
 
   document.addEventListener("click", (e) => {
     if (!openColumnMenuEl) return;
-    const isToggle = e.target.closest && e.target.closest(".gt-col-menu-btn");
+    const isToggle = e.target.closest && e.target.closest(".gt-col-menu-trigger");
     if (isToggle) return;
     if (!openColumnMenuEl.contains(e.target)) {
       closeColumnMenu();
@@ -1596,21 +1596,15 @@
       const th = document.createElement("th");
       th.className = "gt-col-header";
 
-      const title = document.createElement("span");
-      title.className = "gt-col-title";
-      title.textContent = c.label;
-      th.appendChild(title);
-
-      const menuBtn = document.createElement("button");
-      menuBtn.className = "gt-col-menu-btn";
-      menuBtn.innerHTML = "⋯";
-      menuBtn.title = "Column menu";
-      menuBtn.onclick = (e) => {
+      const trigger = document.createElement("button");
+      trigger.className = "gt-col-menu-trigger";
+      trigger.innerHTML = `<span class="gt-col-title">${c.label}</span><span class="gt-col-caret">▾</span>`;
+      trigger.onclick = (e) => {
         e.stopPropagation();
-        openColumnMenu(c, th);
+        openColumnMenu(c, trigger);
       };
-      th.appendChild(menuBtn);
 
+      th.appendChild(trigger);
       theadRow.appendChild(th);
     });
 

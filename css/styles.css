@@ -851,7 +851,26 @@ body {
 
 .gt-col-header {
   position: relative;
-  padding-right: 26px;
+  padding-right: 10px;
+}
+
+.gt-col-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  color: #111827;
+  font-size: 12px;
+  text-transform: none;
+}
+
+.gt-col-menu-trigger:hover {
+  background: #f3f4f6;
+  border-color: var(--gt-border-subtle);
 }
 
 .gt-col-title {
@@ -861,22 +880,9 @@ body {
   font-weight: 600;
 }
 
-.gt-col-menu-btn {
-  position: absolute;
-  top: 50%;
-  right: 6px;
-  transform: translateY(-50%);
-  border: none;
-  background: transparent;
-  cursor: pointer;
+.gt-col-caret {
+  font-size: 10px;
   color: #6b7280;
-  padding: 2px 4px;
-  border-radius: 6px;
-}
-
-.gt-col-menu-btn:hover {
-  background: #f3f4f6;
-  color: #111827;
 }
 
 .gt-col-menu {
