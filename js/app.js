@@ -841,7 +841,7 @@
       return null;
     }
     try {
-      const resp = await fetch(`${WORKSPACES_API}/${id}`, {
+      const resp = await fetch(`${WORKSPACES_API}?id=${encodeURIComponent(id)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
