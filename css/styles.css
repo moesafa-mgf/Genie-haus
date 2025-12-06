@@ -983,71 +983,224 @@ a:hover {
 
 .gt-filter-bar {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 12px 16px;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  margin-bottom: 8px;
+}
+
+.gt-filter-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.gt-chip-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  cursor: pointer;
+  font-size: 12px;
+  color: #374151;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.gt-chip-button:hover {
+  border-color: #cbd5e1;
+}
+
+.gt-chip-button.is-active {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #4338ca;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.16);
+}
+
+.gt-chip-count {
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #4338ca;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  padding: 0 6px;
+}
+
+.gt-filter-flyout {
+  position: absolute;
+  z-index: 9999;
+  min-width: 380px;
+  max-width: 480px;
+  background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 14px;
-  background: #ffffff;
-  margin-bottom: 10px;
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.15);
+  padding: 14px;
 }
 
-.gt-filter-row {
+.gt-filter-flyout-header {
   display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  align-items: center;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
 }
 
-.gt-filter-group {
+.gt-filter-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.gt-filter-sub {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.gt-filter-link {
+  border: none;
+  background: transparent;
+  color: #4338ca;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.gt-filter-conditions {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
+  margin: 12px 0 10px;
 }
 
-.gt-filter-group label {
-  font-size: 11px;
-  color: var(--gt-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+.gt-filter-row-line {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1.4fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f9fafb;
 }
 
-.gt-filter-actions {
-  display: flex;
-  align-items: flex-end;
-}
-
-.gt-filter-bar .gt-input,
-.gt-filter-bar .gt-select {
-  min-width: 170px;
-  height: 38px;
-  border-radius: 10px;
+.gt-filter-input {
+  width: 100%;
+  height: 34px;
+  border-radius: 9px;
   border: 1px solid #dfe4ec;
+  padding: 6px 10px;
+  font-size: 12px;
   background: #ffffff;
-  padding: 8px 12px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
-.gt-filter-bar .gt-input:focus,
-.gt-filter-bar .gt-select:focus {
-  border-color: #b6c2d1;
-  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.16);
+.gt-filter-input:focus {
+  border-color: #c7d2fe;
+  box-shadow: 0 0 0 3px rgba(199, 210, 254, 0.4);
+  outline: none;
 }
 
-.gt-filter-bar label {
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: #9aa3b5;
-  font-size: 11px;
-  text-transform: uppercase;
+.gt-filter-value {
+  width: 100%;
 }
 
-.gt-filter-bar .gt-button {
-  height: 38px;
+.gt-filter-placeholder {
+  font-size: 12px;
+  color: #6b7280;
+  padding-left: 4px;
+}
+
+.gt-filter-remove {
+  border: none;
+  background: #f3f4f6;
   border-radius: 10px;
-  padding: 0 14px;
-  font-weight: 600;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  color: #6b7280;
+}
+
+.gt-filter-remove:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.gt-filter-add {
+  width: 100%;
+  border: 1px dashed #d1d5db;
+  border-radius: 12px;
+  background: #f9fafb;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #374151;
+}
+
+.gt-filter-add:hover {
+  border-color: #c7d2fe;
+  background: #eef2ff;
+}
+
+.gt-filter-empty {
+  font-size: 12px;
+  color: #6b7280;
+  padding: 6px 2px;
+}
+
+.gt-filter-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.gt-filter-hint {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.gt-filter-footer-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.gt-group-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.gt-group-option {
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+  color: #111827;
+}
+
+.gt-group-option.is-active {
+  border-color: #c7d2fe;
+  background: #eef2ff;
+  color: #4338ca;
+  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.18);
+}
+
+.gt-group-option:hover {
+  border-color: #cbd5e1;
 }
 
 .gt-table {

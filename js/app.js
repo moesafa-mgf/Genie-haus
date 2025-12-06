@@ -917,6 +917,7 @@
       dateFrom: "",
       dateTo: "",
       groupBy: "",
+      conditions: [],
     };
   }
 
@@ -1543,111 +1544,352 @@
     schedulePush();
   }
 
-  function renderFiltersBar() {
-    const bar = document.getElementById("gt-filter-bar");
-    if (!bar) return;
+  let filterFlyoutEl = null;
+  let groupFlyoutEl = null;
+
+  function getFilterableFields() {
+    const base = [
+      { id: "title", label: "Title", type: "text" },
+      { id: "status", label: "Status", type: "single_select", options: getStatusOptions() },
+      { id: "assignee", label: "Assignee", type: "user" },
+      { id: "updatedAt", label: "Updated", type: "date" },
+    ];
+    const extras = (APP_STATE.columns || [])
+      .filter((c) => !["title", "status", "assignee", "updatedAt"].includes(c.id))
+      .map((c) => ({ id: c.id, label: c.label, type: c.type, options: c.options }));
+    return [...base, ...extras];
+  }
+
+  function getFilterFieldMeta(fieldId) {
+    return getFilterableFields().find((f) => f.id === fieldId) || getFilterableFields()[0];
+  }
+
+  function closeFilterFlyout() {
+    if (filterFlyoutEl && filterFlyoutEl.parentElement) {
+      filterFlyoutEl.parentElement.removeChild(filterFlyoutEl);
+    }
+    filterFlyoutEl = null;
+  }
+
+  function closeGroupFlyout() {
+    if (groupFlyoutEl && groupFlyoutEl.parentElement) {
+      groupFlyoutEl.parentElement.removeChild(groupFlyoutEl);
+    }
+    groupFlyoutEl = null;
+  }
+
+  function setFiltersPartial(partial) {
+    APP_STATE.filters = { ...defaultFilters(), ...APP_STATE.filters, ...partial };
+    persistFilters();
+    renderFiltersBar();
+    renderTasks();
+    renderBoardView();
+  }
+
+  function openFilterFlyout(anchor) {
+    closeFilterFlyout();
+    if (!anchor) return;
+
     const f = APP_STATE.filters || defaultFilters();
-    const statusOptions = getStatusOptions();
-    const customFields = (APP_STATE.columns || []).filter(
-      (c) => !["title", "status", "assignee", "updatedAt"].includes(c.id)
-    );
-
-    const assigneeOptions = APP_STATE.staff
-      .map((u) => `<option value="${u.email}">${u.name}</option>`)
-      .join("");
-
-    const statusOptionsHtml = statusOptions
-      .map((o) => `<option value="${o.id}">${o.label}</option>`)
-      .join("");
-
-    const groupOptions = [
-      `<option value="">No grouping</option>`,
-      `<option value="status">Group by status</option>`,
-      `<option value="assignee">Group by assignee</option>`,
-      ...customFields.map((c) => `<option value="field:${c.id}">Group by ${c.label}</option>`),
-    ].join("");
-
-    bar.innerHTML = `
-      <div class="gt-filter-row">
-        <div class="gt-filter-group">
-          <label>Assignee</label>
-          <select id="gt-filter-assignee" class="gt-select">
-            <option value="">Anyone</option>
-            ${assigneeOptions}
-          </select>
+    const conditions = Array.isArray(f.conditions) ? f.conditions.slice() : [];
+    const fly = document.createElement("div");
+    fly.className = "gt-filter-flyout";
+    fly.innerHTML = `
+      <div class="gt-filter-flyout-header">
+        <div>
+          <div class="gt-filter-title">Filter</div>
+          <div class="gt-filter-sub">Build conditions across any column</div>
         </div>
-        <div class="gt-filter-group">
-          <label>Status</label>
-          <select id="gt-filter-status" class="gt-select">
-            <option value="">Any</option>
-            ${statusOptionsHtml}
-          </select>
-        </div>
-        <div class="gt-filter-group">
-          <label>Search</label>
-          <input id="gt-filter-text" class="gt-input" type="search" placeholder="Title or fields" />
-        </div>
-        <div class="gt-filter-group">
-          <label>Date from</label>
-          <input id="gt-filter-from" class="gt-input" type="date" />
-        </div>
-        <div class="gt-filter-group">
-          <label>Date to</label>
-          <input id="gt-filter-to" class="gt-input" type="date" />
-        </div>
-        <div class="gt-filter-group">
-          <label>Group</label>
-          <select id="gt-filter-group" class="gt-select">${groupOptions}</select>
-        </div>
-        <div class="gt-filter-actions">
-          <button id="gt-filter-clear" class="gt-button gt-button-small">Clear</button>
+        <button class="gt-filter-link" data-action="clear">Clear all</button>
+      </div>
+      <div class="gt-filter-conditions" id="gt-filter-conditions"></div>
+      <button class="gt-filter-add" data-action="add">+ Add condition</button>
+      <div class="gt-filter-footer">
+        <div class="gt-filter-hint">Filters apply to both grid and board.</div>
+        <div class="gt-filter-footer-actions">
+          <button class="gt-button gt-button-small" data-action="close">Close</button>
         </div>
       </div>
     `;
 
-    const assigneeSel = document.getElementById("gt-filter-assignee");
-    const statusSel = document.getElementById("gt-filter-status");
-    const textInput = document.getElementById("gt-filter-text");
-    const fromInput = document.getElementById("gt-filter-from");
-    const toInput = document.getElementById("gt-filter-to");
-    const groupSel = document.getElementById("gt-filter-group");
-    const clearBtn = document.getElementById("gt-filter-clear");
+    const renderRows = () => {
+      const wrap = fly.querySelector("#gt-filter-conditions");
+      if (!wrap) return;
+      wrap.innerHTML = "";
 
-    if (assigneeSel) assigneeSel.value = f.assigneeEmail || "";
-    if (statusSel) statusSel.value = f.status || "";
-    if (textInput) textInput.value = f.text || "";
-    if (fromInput) fromInput.value = f.dateFrom || "";
-    if (toInput) toInput.value = f.dateTo || "";
-    if (groupSel) groupSel.value = f.groupBy || "";
+      const fieldOptionsHtml = getFilterableFields()
+        .map((c) => `<option value="${c.id}">${c.label}</option>`)
+        .join("");
 
-    const onChange = () => {
-      APP_STATE.filters = {
-        assigneeEmail: assigneeSel?.value || "",
-        status: statusSel?.value || "",
-        text: textInput?.value || "",
-        dateFrom: fromInput?.value || "",
-        dateTo: toInput?.value || "",
-        groupBy: groupSel?.value || "",
+      const makeValueControl = (meta, cond, idx) => {
+        const controlWrap = document.createElement("div");
+        controlWrap.className = "gt-filter-value";
+        if (cond.operator === "is_empty" || cond.operator === "not_empty") {
+          controlWrap.innerHTML = `<div class="gt-filter-placeholder">No value needed</div>`;
+          return controlWrap;
+        }
+
+        if (meta.type === "single_select" && Array.isArray(meta.options)) {
+          const sel = document.createElement("select");
+          sel.className = "gt-filter-input";
+          sel.innerHTML = '<option value="">Select…</option>' + meta.options.map((o) => `<option value="${o.id}">${o.label}</option>`).join("");
+          sel.value = cond.value || "";
+          sel.onchange = () => {
+            conditions[idx].value = sel.value;
+            setFiltersPartial({ conditions });
+          };
+          controlWrap.appendChild(sel);
+          return controlWrap;
+        }
+
+        if (meta.type === "user") {
+          const sel = document.createElement("select");
+          sel.className = "gt-filter-input";
+          sel.innerHTML = '<option value="">Anyone</option>' + (APP_STATE.staff || []).map((u) => `<option value="${u.email}">${u.name}</option>`).join("");
+          sel.value = cond.value || "";
+          sel.onchange = () => {
+            conditions[idx].value = sel.value;
+            setFiltersPartial({ conditions });
+          };
+          controlWrap.appendChild(sel);
+          return controlWrap;
+        }
+
+        if (meta.type === "date") {
+          const inp = document.createElement("input");
+          inp.type = "date";
+          inp.className = "gt-filter-input";
+          inp.value = cond.value || "";
+          inp.onchange = () => {
+            conditions[idx].value = inp.value;
+            setFiltersPartial({ conditions });
+          };
+          controlWrap.appendChild(inp);
+          return controlWrap;
+        }
+
+        const inp = document.createElement("input");
+        inp.type = "text";
+        inp.placeholder = "Value";
+        inp.className = "gt-filter-input";
+        inp.value = cond.value || "";
+        inp.oninput = () => {
+          conditions[idx].value = inp.value;
+          setFiltersPartial({ conditions });
+        };
+        controlWrap.appendChild(inp);
+        return controlWrap;
       };
-      persistFilters();
-      renderTasks();
-      renderBoardView();
+
+      conditions.forEach((cond, idx) => {
+        const meta = getFilterFieldMeta(cond.field || cond.columnId || "title");
+        if (!conditions[idx].field) conditions[idx].field = meta.id;
+        if (!conditions[idx].operator) {
+          conditions[idx].operator = meta.type === "date" ? "on" : "contains";
+        }
+
+        const row = document.createElement("div");
+        row.className = "gt-filter-row-line";
+        row.innerHTML = `
+          <select class="gt-filter-input" data-role="field">${fieldOptionsHtml}</select>
+          <select class="gt-filter-input" data-role="op"></select>
+        `;
+
+        const fieldSel = row.querySelector('[data-role="field"]');
+        const opSel = row.querySelector('[data-role="op"]');
+        fieldSel.value = cond.field || meta.id;
+
+        const operators = meta.type === "date"
+          ? [
+              { id: "on", label: "On" },
+              { id: "before", label: "Before" },
+              { id: "after", label: "After" },
+              { id: "is_empty", label: "Is empty" },
+              { id: "not_empty", label: "Is not empty" },
+            ]
+          : [
+              { id: "contains", label: "Contains" },
+              { id: "is", label: "Is" },
+              { id: "is_not", label: "Is not" },
+              { id: "is_empty", label: "Is empty" },
+              { id: "not_empty", label: "Is not empty" },
+            ];
+
+        opSel.innerHTML = operators.map((o) => `<option value="${o.id}">${o.label}</option>`).join("");
+        opSel.value = cond.operator || operators[0].id;
+
+        fieldSel.onchange = () => {
+          const nextMeta = getFilterFieldMeta(fieldSel.value);
+          conditions[idx] = { field: nextMeta.id, operator: nextMeta.type === "date" ? "on" : "contains", value: "" };
+          renderRows();
+          setFiltersPartial({ conditions });
+        };
+
+        opSel.onchange = () => {
+          conditions[idx].operator = opSel.value;
+          if (opSel.value === "is_empty" || opSel.value === "not_empty") {
+            conditions[idx].value = "";
+          }
+          setFiltersPartial({ conditions });
+          renderRows();
+        };
+
+        row.appendChild(makeValueControl(meta, cond, idx));
+
+        const removeBtn = document.createElement("button");
+        removeBtn.className = "gt-filter-remove";
+        removeBtn.textContent = "✕";
+        removeBtn.onclick = () => {
+          conditions.splice(idx, 1);
+          setFiltersPartial({ conditions });
+          renderRows();
+        };
+        row.appendChild(removeBtn);
+
+        wrap.appendChild(row);
+      });
+
+      if (!conditions.length) {
+        wrap.innerHTML = '<div class="gt-filter-empty">No filter conditions. Add one to get started.</div>';
+      }
     };
 
-    [assigneeSel, statusSel, textInput, fromInput, toInput, groupSel]
-      .filter(Boolean)
-      .forEach((el) => {
-        const ev = el.tagName === "INPUT" ? "input" : "change";
-        el.addEventListener(ev, onChange);
+    renderRows();
+
+    fly.querySelectorAll("[data-action]").forEach((btn) => {
+      const action = btn.getAttribute("data-action");
+      if (action === "add") {
+        btn.onclick = () => {
+          const first = getFilterableFields()[0];
+          conditions.push({ field: first.id, operator: first.type === "date" ? "on" : "contains", value: "" });
+          setFiltersPartial({ conditions });
+          renderRows();
+        };
+      }
+      if (action === "clear") {
+        btn.onclick = () => {
+          setFiltersPartial({ conditions: [], assigneeEmail: "", status: "", text: "", dateFrom: "", dateTo: "" });
+          renderRows();
+        };
+      }
+      if (action === "close") {
+        btn.onclick = () => closeFilterFlyout();
+      }
+    });
+
+    document.body.appendChild(fly);
+    const rect = anchor.getBoundingClientRect();
+    fly.style.left = `${rect.left + window.scrollX}px`;
+    fly.style.top = `${rect.bottom + 6 + window.scrollY}px`;
+    filterFlyoutEl = fly;
+  }
+
+  function openGroupFlyout(anchor) {
+    closeGroupFlyout();
+    if (!anchor) return;
+    const current = APP_STATE.filters?.groupBy || "";
+    const options = [
+      { value: "", label: "No grouping" },
+      { value: "status", label: "Status" },
+      { value: "assignee", label: "Assignee" },
+      ...((APP_STATE.columns || [])
+        .filter((c) => !["title", "status", "assignee", "updatedAt"].includes(c.id))
+        .map((c) => ({ value: `field:${c.id}`, label: c.label }))),
+    ];
+
+    const fly = document.createElement("div");
+    fly.className = "gt-filter-flyout";
+    fly.innerHTML = `
+      <div class="gt-filter-flyout-header">
+        <div>
+          <div class="gt-filter-title">Group</div>
+          <div class="gt-filter-sub">Choose a column to group rows</div>
+        </div>
+        <button class="gt-filter-link" data-action="clear">Clear</button>
+      </div>
+      <div class="gt-group-options" id="gt-group-options"></div>
+    `;
+
+    const wrap = fly.querySelector("#gt-group-options");
+    if (wrap) {
+      options.forEach((opt) => {
+        const btn = document.createElement("button");
+        btn.className = `gt-group-option${opt.value === current ? " is-active" : ""}`;
+        btn.textContent = opt.label;
+        btn.onclick = () => {
+          setFiltersPartial({ groupBy: opt.value });
+          closeGroupFlyout();
+        };
+        wrap.appendChild(btn);
       });
+    }
+
+    const clearBtn = fly.querySelector('[data-action="clear"]');
+    if (clearBtn) {
+      clearBtn.onclick = () => {
+        setFiltersPartial({ groupBy: "" });
+        closeGroupFlyout();
+      };
+    }
+
+    document.body.appendChild(fly);
+    const rect = anchor.getBoundingClientRect();
+    fly.style.left = `${rect.left + window.scrollX}px`;
+    fly.style.top = `${rect.bottom + 6 + window.scrollY}px`;
+    groupFlyoutEl = fly;
+  }
+
+  function renderFiltersBar() {
+    const bar = document.getElementById("gt-filter-bar");
+    if (!bar) return;
+    const f = APP_STATE.filters || defaultFilters();
+    const activeConditions = Array.isArray(f.conditions) ? f.conditions.length : 0;
+    const groupLabel = (() => {
+      if (!f.groupBy) return "No group";
+      if (f.groupBy === "status") return "Grouped by Status";
+      if (f.groupBy === "assignee") return "Grouped by Assignee";
+      if (f.groupBy.startsWith("field:")) {
+        const fid = f.groupBy.split(":")[1];
+        const field = (APP_STATE.columns || []).find((c) => c.id === fid);
+        return field ? `Grouped by ${field.label}` : "Grouped";
+      }
+      return "Grouped";
+    })();
+
+    bar.innerHTML = `
+      <div class="gt-filter-toolbar">
+        <button id="gt-open-filter" class="gt-chip-button ${activeConditions ? "is-active" : ""}">
+          <span>Filter</span>
+          ${activeConditions ? `<span class="gt-chip-count">${activeConditions}</span>` : ""}
+        </button>
+        <button id="gt-open-group" class="gt-chip-button ${f.groupBy ? "is-active" : ""}">${groupLabel}</button>
+        <button id="gt-filter-clear" class="gt-button gt-button-small">Clear</button>
+      </div>
+    `;
+
+    const filterBtn = document.getElementById("gt-open-filter");
+    const groupBtn = document.getElementById("gt-open-group");
+    const clearBtn = document.getElementById("gt-filter-clear");
+
+    if (filterBtn) {
+      filterBtn.onclick = (e) => {
+        e.stopPropagation();
+        openFilterFlyout(filterBtn);
+      };
+    }
+
+    if (groupBtn) {
+      groupBtn.onclick = (e) => {
+        e.stopPropagation();
+        openGroupFlyout(groupBtn);
+      };
+    }
 
     if (clearBtn) {
       clearBtn.onclick = () => {
-        APP_STATE.filters = defaultFilters();
-        persistFilters();
-        renderFiltersBar();
-        renderTasks();
-        renderBoardView();
+        closeFilterFlyout();
+        closeGroupFlyout();
+        setFiltersPartial({ ...defaultFilters() });
       };
     }
   }
@@ -2093,12 +2335,22 @@
     if (contextMenuEl && !contextMenuEl.contains(e.target)) {
       closeContextMenu();
     }
+    const isFilterToggle = e.target.closest && e.target.closest("#gt-open-filter");
+    const isGroupToggle = e.target.closest && e.target.closest("#gt-open-group");
+    if (filterFlyoutEl && !isFilterToggle && !filterFlyoutEl.contains(e.target)) {
+      closeFilterFlyout();
+    }
+    if (groupFlyoutEl && !isGroupToggle && !groupFlyoutEl.contains(e.target)) {
+      closeGroupFlyout();
+    }
   });
 
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       closeContextMenu();
       closeColumnMenu();
+      closeFilterFlyout();
+      closeGroupFlyout();
     }
   });
 
@@ -2141,6 +2393,59 @@
         const d = t.updatedAt || t.createdAt;
         return d ? new Date(d) <= to : false;
       });
+    }
+
+    const conditions = Array.isArray(f.conditions) ? f.conditions : [];
+    if (conditions.length) {
+      const metaMap = Object.fromEntries(getFilterableFields().map((c) => [c.id, c]));
+
+      const getVal = (task, meta) => {
+        if (!meta) return "";
+        if (meta.id === "title") return task.title || "";
+        if (meta.id === "status") return task.status || "";
+        if (meta.id === "assignee") return task.assigneeEmail || "";
+        if (meta.id === "updatedAt") return task.updatedAt || task.createdAt || "";
+        return (task.fields || {})[meta.id];
+      };
+
+      const check = (raw, cond, meta) => {
+        const op = cond.operator || "contains";
+        const value = cond.value || "";
+        const isEmptyVal = (v) => v == null || v === "" || (Array.isArray(v) && !v.length);
+        if (op === "is_empty") return isEmptyVal(raw);
+        if (op === "not_empty") return !isEmptyVal(raw);
+
+        if (meta?.type === "date") {
+          const rawDate = raw ? new Date(raw) : null;
+          const condDate = value ? new Date(value) : null;
+          if (!rawDate || !condDate || Number.isNaN(rawDate.getTime()) || Number.isNaN(condDate.getTime())) return false;
+          if (op === "on") return rawDate.toDateString() === condDate.toDateString();
+          if (op === "before") return rawDate <= condDate;
+          if (op === "after") return rawDate >= condDate;
+        }
+
+        if (Array.isArray(raw)) {
+          if (op === "contains") return raw.some((r) => String(r || "").toLowerCase().includes(String(value).toLowerCase()));
+          if (op === "is") return raw.includes(value);
+          if (op === "is_not") return !raw.includes(value);
+        }
+
+        const lhs = String(raw || "").toLowerCase();
+        const rhs = String(value || "").toLowerCase();
+        if (op === "contains") return lhs.includes(rhs);
+        if (op === "is") return lhs === rhs;
+        if (op === "is_not") return lhs !== rhs;
+        return true;
+      };
+
+      list = list.filter((task) =>
+        conditions.every((cond) => {
+          const meta = metaMap[cond.field || cond.columnId];
+          if (!meta) return true;
+          const val = getVal(task, meta);
+          return check(val, cond, meta);
+        })
+      );
     }
 
     return list;
