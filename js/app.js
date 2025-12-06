@@ -2651,20 +2651,32 @@
 
       const handle = document.createElement("span");
       handle.className = "gt-row-handle";
-      handle.textContent = "⋮⋮";
-      const leadOpenBtn = document.createElement("button");
-      leadOpenBtn.className = "gt-row-open";
-      leadOpenBtn.title = "Open record";
-      leadOpenBtn.textContent = "⤢";
-      leadOpenBtn.onclick = (e) => {
-        e.stopPropagation();
-        openDetailDrawer(task.id);
-      };
-      lead.appendChild(handle);
-      lead.appendChild(leadOpenBtn);
+      handle.title = "Drag row";
+      handle.innerHTML = "⋮⋮";
+
+      const rowNum = document.createElement("span");
+      rowNum.className = "gt-row-number";
+      rowNum.textContent = displayIndex;
+
+      const selectBox = document.createElement("input");
+      selectBox.type = "checkbox";
+      selectBox.className = "gt-row-select";
+      selectBox.addEventListener("click", (e) => e.stopPropagation());
+
+      const divider = document.createElement("span");
+      divider.className = "gt-row-divider";
+
+      const leadInner = document.createElement("div");
+      leadInner.className = "gt-row-leading-inner";
+      leadInner.appendChild(handle);
+      leadInner.appendChild(rowNum);
+      leadInner.appendChild(selectBox);
+      leadInner.appendChild(divider);
+
+      lead.appendChild(leadInner);
       tr.appendChild(lead);
 
-      columns.forEach((col) => {
+      columns.forEach((col, colIdx) => {
         const td = document.createElement("td");
         const current = getValue(task, col, displayIndex);
         const prev = current;
@@ -2923,6 +2935,24 @@
             td.appendChild(inp);
             enableCellQuickFocus(td, inp);
           }
+        }
+
+        if (colIdx === 0) {
+          td.classList.add("gt-cell-leading-content");
+          const wrap = document.createElement("div");
+          wrap.className = "gt-cell-leading-wrap";
+          while (td.firstChild) wrap.appendChild(td.firstChild);
+          td.appendChild(wrap);
+
+          const expandBtn = document.createElement("button");
+          expandBtn.className = "gt-cell-expand";
+          expandBtn.title = "Open record";
+          expandBtn.textContent = "⤢";
+          expandBtn.onclick = (e) => {
+            e.stopPropagation();
+            openDetailDrawer(task.id);
+          };
+          td.appendChild(expandBtn);
         }
 
         tr.appendChild(td);
