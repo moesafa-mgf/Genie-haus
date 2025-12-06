@@ -122,6 +122,8 @@
     chooserOpen: false,
   };
 
+  let gridMenuEl = null;
+
   let draggedTaskId = null;
   let openColumnMenuEl = null;
   let draggingColumnId = null;
@@ -483,13 +485,9 @@
         APP_STATE.grids = Array.isArray(data.state.grids) ? data.state.grids : [];
         APP_STATE.currentGridId = data.state.currentGridId || null;
         APP_STATE.userColors = data.state.userColors || APP_STATE.userColors || {};
-        if (APP_STATE.currentWorkspaceId) {
-          const saved = APP_STATE.workspaceFilters[APP_STATE.currentWorkspaceId];
-          APP_STATE.filters = saved ? { ...defaultFilters(), ...saved } : defaultFilters();
-          ensureDefaultGrid();
-          renderFiltersBar();
-          renderGridTabs();
-        }
+        normalizeGridsAfterLoad();
+        renderFiltersBar();
+        renderGridTabs();
         renderTasks();
         renderBoardView();
         if (APP_STATE.currentView === "dashboard" && canViewDashboard()) {
@@ -503,7 +501,7 @@
         if (Array.isArray(data.state?.grids)) {
           APP_STATE.grids = data.state.grids;
           APP_STATE.currentGridId = data.state.currentGridId || null;
-          ensureDefaultGrid();
+          normalizeGridsAfterLoad();
           renderGridTabs();
         }
         if (data.state?.userColors) {
@@ -529,9 +527,11 @@
   }
 
   async function pushState() {
+    persistCurrentGridFilters();
     if (!APP_STATE.runtime.locationId || !APP_STATE.currentWorkspaceId) return;
     try {
       setSyncStatus("syncing");
+      const mergedTasks = collectAllGridTasks();
       const resp = await fetch(REMOTE_SYNC_API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -540,7 +540,7 @@
           workspaceId: APP_STATE.currentWorkspaceId,
           userEmail: APP_STATE.runtime.email || null,
           state: {
-            tasks: APP_STATE.tasks,
+            tasks: mergedTasks,
             columns: APP_STATE.columns,
             filters: APP_STATE.workspaceFilters,
             activity: APP_STATE.activity,
@@ -634,31 +634,35 @@
     return APP_STATE.grids.find((g) => g.id === APP_STATE.currentGridId);
   }
 
-  function setActiveGrid(gridId) {
-    persistCurrentGridFilters();
+  function setActiveGrid(gridId, options = {}) {
+    const { skipPersist = false, skipSchedule = false } = options;
+    if (!skipPersist) {
+      persistCurrentGridFilters();
+    }
     const grid = APP_STATE.grids.find((g) => g.id === gridId);
     if (!grid) return;
     APP_STATE.currentGridId = gridId;
     APP_STATE.filters = { ...defaultFilters(), ...(grid.filters || {}) };
+    if (Array.isArray(grid.tasks)) {
+      APP_STATE.tasks = grid.tasks.slice();
+    } else {
+      APP_STATE.tasks = [];
+    }
     if (Array.isArray(grid.columns) && grid.columns.length) {
       APP_STATE.columns = unlockColumns(grid.columns);
     } else {
       APP_STATE.columns = unlockColumns(DEFAULT_COLUMNS.slice());
     }
-    if (Array.isArray(grid.tasks)) {
-      APP_STATE.tasks = grid.tasks.slice();
-    }
     if (APP_STATE.currentWorkspaceId) {
       APP_STATE.workspaceFilters[APP_STATE.currentWorkspaceId] = { ...APP_STATE.filters };
     }
-    renderGridTabs();
     renderFiltersBar();
     renderTasks();
     renderBoardView();
     if (APP_STATE.currentView === "dashboard" && canViewDashboard()) {
       renderDashboardView();
     }
-    schedulePush();
+    if (!skipSchedule) schedulePush();
   }
 
   function renderGridTabs() {
@@ -667,9 +671,11 @@
     ensureDefaultGrid();
     const activeId = APP_STATE.currentGridId;
     const tabs = APP_STATE.grids
-      .map(
-        (g) => `<button class="gt-grid-tab${g.id === activeId ? " is-active" : ""}" data-grid="${g.id}" title="${g.name || "Grid"}">${g.name || "Grid"}</button>`
-      )
+      .map((g) => {
+        const isActive = g.id === activeId;
+        const caret = isActive ? '<span class="gt-grid-tab-caret" data-grid-caret="1">▾</span>' : "";
+        return `<button class="gt-grid-tab${isActive ? " is-active" : ""}" data-grid="${g.id}" title="${g.name || "Grid"}"><span class="gt-grid-tab-label">${g.name || "Grid"}</span>${caret}</button>`;
+      })
       .join("");
 
     root.innerHTML = `
@@ -688,12 +694,13 @@
         e.preventDefault();
         openGridMenu(btn);
       });
-      btn.addEventListener("mouseover", () => {
-        btn.classList.add("has-hover-menu");
-      });
-      btn.addEventListener("mouseout", () => {
-        btn.classList.remove("has-hover-menu");
-      });
+      const caret = btn.querySelector("[data-grid-caret]");
+      if (caret) {
+        caret.addEventListener("click", (e) => {
+          e.stopPropagation();
+          openGridMenu(btn);
+        });
+      }
     });
 
     const addBtn = document.getElementById("gt-grid-add");
@@ -908,10 +915,27 @@
     };
   }
 
+  function collectAllGridTasks() {
+    if (!Array.isArray(APP_STATE.grids)) return APP_STATE.tasks || [];
+    const merged = [];
+    APP_STATE.grids.forEach((g) => {
+      if (Array.isArray(g.tasks)) {
+        merged.push(...g.tasks);
+      }
+    });
+    return merged.length ? merged : (APP_STATE.tasks || []);
+  }
+
   function ensureDefaultGrid() {
     if (!Array.isArray(APP_STATE.grids)) APP_STATE.grids = [];
     if (!APP_STATE.grids.length) {
-      const base = { id: `grid_${Math.random().toString(36).slice(2, 6)}`, name: "Main Grid", filters: { ...defaultFilters() } };
+      const base = {
+        id: `grid_${Math.random().toString(36).slice(2, 6)}`,
+        name: "Main Grid",
+        filters: { ...defaultFilters() },
+        columns: unlockColumns(DEFAULT_COLUMNS.slice()),
+        tasks: [],
+      };
       APP_STATE.grids.push(base);
       APP_STATE.currentGridId = base.id;
     }
@@ -920,7 +944,34 @@
     }
     const active = APP_STATE.grids.find((g) => g.id === APP_STATE.currentGridId);
     if (!active.filters) active.filters = { ...defaultFilters() };
+    if (!Array.isArray(active.columns) || !active.columns.length) {
+      active.columns = unlockColumns(DEFAULT_COLUMNS.slice());
+    }
+    if (!Array.isArray(active.tasks)) active.tasks = [];
     APP_STATE.filters = { ...defaultFilters(), ...active.filters };
+  }
+
+  function normalizeGridsAfterLoad() {
+    ensureDefaultGrid();
+    const allEmpty = APP_STATE.grids.every((g) => !Array.isArray(g.tasks) || !g.tasks.length);
+    const active = APP_STATE.grids.find((g) => g.id === APP_STATE.currentGridId) || APP_STATE.grids[0];
+
+    if (allEmpty && Array.isArray(APP_STATE.tasks) && APP_STATE.tasks.length) {
+      active.tasks = APP_STATE.tasks.slice();
+      active.columns = APP_STATE.columns ? unlockColumns(APP_STATE.columns) : unlockColumns(DEFAULT_COLUMNS.slice());
+    }
+
+    APP_STATE.grids = APP_STATE.grids.map((g) => ({
+      ...g,
+      filters: { ...defaultFilters(), ...(g.filters || {}) },
+      columns: Array.isArray(g.columns) && g.columns.length ? unlockColumns(g.columns) : unlockColumns(DEFAULT_COLUMNS.slice()),
+      tasks: Array.isArray(g.tasks) ? g.tasks : [],
+    }));
+
+    const targetId = APP_STATE.currentGridId || (APP_STATE.grids[0] && APP_STATE.grids[0].id);
+    if (targetId) {
+      setActiveGrid(targetId, { skipPersist: true, skipSchedule: true });
+    }
   }
 
   function persistCurrentGridFilters() {
@@ -946,7 +997,7 @@
     APP_STATE.grids.push(grid);
     setActiveGrid(grid.id);
     renderGridTabs();
-    schedulePush();
+    if (!skipSchedule) schedulePush();
   }
 
   function selectWorkspace(workspaceId) {
@@ -1989,6 +2040,98 @@
       contextMenuEl.parentElement.removeChild(contextMenuEl);
     }
     contextMenuEl = null;
+  }
+
+  function closeGridMenu() {
+    if (gridMenuEl && gridMenuEl.parentElement) {
+      gridMenuEl.parentElement.removeChild(gridMenuEl);
+    }
+    gridMenuEl = null;
+  }
+
+  function renameGrid(gridId) {
+    const grid = APP_STATE.grids.find((g) => g.id === gridId);
+    if (!grid) return;
+    const name = prompt("Grid name", grid.name || "Grid");
+    if (!name || !name.trim()) return;
+    grid.name = name.trim();
+    renderGridTabs();
+    schedulePush();
+  }
+
+  function duplicateGrid(gridId) {
+    const grid = APP_STATE.grids.find((g) => g.id === gridId);
+    if (!grid) return;
+    const copy = {
+      ...grid,
+      id: `grid_${Math.random().toString(36).slice(2, 6)}`,
+      name: `${grid.name || "Grid"} Copy`,
+      filters: { ...defaultFilters(), ...(grid.filters || {}) },
+      columns: Array.isArray(grid.columns) ? unlockColumns(grid.columns) : unlockColumns(DEFAULT_COLUMNS.slice()),
+      tasks: Array.isArray(grid.tasks) ? grid.tasks.map((t) => ({ ...t, id: `t_${Math.random().toString(36).slice(2)}` })) : [],
+    };
+    APP_STATE.grids.push(copy);
+    setActiveGrid(copy.id);
+    renderGridTabs();
+    schedulePush();
+  }
+
+  function deleteGrid(gridId) {
+    if (APP_STATE.grids.length <= 1) {
+      showToast("Keep at least one grid", "error");
+      return;
+    }
+    const idx = APP_STATE.grids.findIndex((g) => g.id === gridId);
+    if (idx === -1) return;
+    APP_STATE.grids.splice(idx, 1);
+    const nextId = APP_STATE.grids[Math.max(0, idx - 1)].id;
+    setActiveGrid(nextId);
+    renderGridTabs();
+    schedulePush();
+  }
+
+  function openGridMenu(anchor) {
+    closeGridMenu();
+    const gridId = anchor.getAttribute("data-grid");
+    const grid = APP_STATE.grids.find((g) => g.id === gridId);
+    if (!grid) return;
+
+    const menu = document.createElement("div");
+    menu.className = "gt-context-menu";
+    menu.innerHTML = `
+      <button class="gt-context-item" data-action="rename">Rename grid</button>
+      <button class="gt-context-item" data-action="duplicate">Duplicate grid</button>
+      ${APP_STATE.grids.length > 1 ? '<button class="gt-context-item is-danger" data-action="delete">Delete grid</button>' : ''}
+    `;
+
+    menu.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-action]");
+      if (!btn) return;
+      const action = btn.getAttribute("data-action");
+      switch (action) {
+        case "rename":
+          renameGrid(gridId);
+          break;
+        case "duplicate":
+          duplicateGrid(gridId);
+          break;
+        case "delete":
+          deleteGrid(gridId);
+          break;
+        default:
+          break;
+      }
+      closeGridMenu();
+    });
+
+    document.addEventListener("click", closeGridMenu, { once: true });
+    gridMenuEl = menu;
+
+    const rect = anchor.getBoundingClientRect();
+    menu.style.top = `${rect.bottom + window.scrollY + 6}px`;
+    menu.style.left = `${rect.left + window.scrollX}px`;
+
+    document.body.appendChild(menu);
   }
 
   function openRowContextMenu(task, event) {
@@ -3546,7 +3689,7 @@
     const root = document.getElementById("gt-dashboard-root");
     if (!root) return;
 
-    const records = APP_STATE.tasks.slice(); // use all tasks, not filtered
+    const records = collectAllGridTasks();
     const { assignedByDay, completedByDay } = getDashboardData(records);
     const grids = Array.isArray(APP_STATE.grids) ? APP_STATE.grids : [];
     const gridCards = grids.length
