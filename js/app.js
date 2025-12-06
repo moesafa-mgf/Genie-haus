@@ -602,8 +602,8 @@
       });
     });
 
-    // Ensure current view is marked active
-    setActiveView(APP_STATE.currentView || "table", { skipRender: true });
+    // Ensure current view is marked active and visibility synced
+    setActiveView(APP_STATE.currentView || "table", { force: true });
   }
 
   function renderModeTabs() {
@@ -733,9 +733,15 @@
 
     const mode = APP_STATE.currentMode || "data";
     if (tableEl && boardEl && dashEl) {
-      tableEl.classList.toggle("is-hidden", nextView !== "table" || mode !== "data");
-      boardEl.classList.toggle("is-hidden", nextView !== "board" || mode !== "data");
-      dashEl.classList.toggle("is-hidden", nextView !== "dashboard" || mode !== "dashboard");
+      const isTable = nextView === "table" && mode === "data";
+      const isBoard = nextView === "board" && mode === "data";
+      const isDash = nextView === "dashboard" && mode === "dashboard";
+      tableEl.classList.toggle("is-active", isTable);
+      boardEl.classList.toggle("is-active", isBoard);
+      dashEl.classList.toggle("is-active", isDash);
+      tableEl.classList.toggle("is-hidden", !isTable);
+      boardEl.classList.toggle("is-hidden", !isBoard);
+      dashEl.classList.toggle("is-hidden", !isDash);
     }
 
     if (options.skipRender) return;
