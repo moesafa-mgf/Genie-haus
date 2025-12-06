@@ -649,7 +649,7 @@
     const roles = APP_STATE.workspaceRoles[ws.id] || {};
     const staff = APP_STATE.staff || [];
 
-    const iconUrl = ws.icon_url || "";
+    const iconVal = ws.icon_url || "";
 
     const rows = staff.map((u) => {
       const current = roles[u.email.toLowerCase()] || "none";
@@ -680,10 +680,21 @@
           <button class="gt-button" id="gt-modal-close">✕</button>
         </div>
         <div class="gt-modal-section">
-          <div class="gt-modal-label">Icon</div>
-          <div class="gt-modal-help">Use an emoji (e.g. 🔮) or an image URL.</div>
+          <div class="gt-modal-label">Workspace name</div>
           <div class="gt-role-form">
-            <input id="gt-icon-url" class="gt-input" type="text" placeholder="🔮 or https://.../icon.png" value="${iconUrl}" />
+            <input id="gt-ws-name" class="gt-input" type="text" value="${ws.name}" />
+            <button id="gt-ws-rename" class="gt-button gt-button-primary">Rename</button>
+          </div>
+        </div>
+
+        <div class="gt-modal-section">
+          <div class="gt-modal-label">Icon</div>
+          <div class="gt-modal-help">Pick an emoji for this workspace.</div>
+          <div class="gt-role-form">
+            <input id="gt-icon-url" class="gt-input" type="text" placeholder="🔮" value="${iconVal}" />
+            <div class="gt-emoji-grid">
+              ${["🔮","📋","✅","📊","🚀","🛠️","🧠","🎯"].map(e=>`<button class="gt-emoji-btn" data-emoji="${e}">${e}</button>`).join("")}
+            </div>
             <button id="gt-icon-save" class="gt-button gt-button-primary">Save Icon</button>
           </div>
         </div>
@@ -713,35 +724,31 @@
 
     const iconSave = document.getElementById("gt-icon-save");
     const iconInput = document.getElementById("gt-icon-url");
+    const renameBtn = document.getElementById("gt-ws-rename");
+    const nameInput = document.getElementById("gt-ws-name");
+
     if (iconSave && iconInput) {
       iconSave.onclick = async () => {
-        const url = iconInput.value.trim() || null;
-        try {
-          const resp = await fetch(`${WORKSPACES_API}/${ws.id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ iconUrl: url }),
-          });
-          const data = await resp.json();
-          if (!resp.ok || !data.ok) {
-            alert("Failed to save icon");
-            console.warn("[app] save icon failed", resp.status, data);
-            return;
-          }
-          // update local workspace list
-          APP_STATE.workspaces = APP_STATE.workspaces.map((w) =>
-            w.id === ws.id ? { ...w, icon_url: url } : w
-          );
-          renderWorkspaceSettingsContent({ ...ws, icon_url: url });
-          if (UI_STATE.chooserOpen) {
-            openWorkspaceChooser();
-          }
-        } catch (err) {
-          console.warn("[app] save icon error", err);
-          alert("Unexpected error saving icon");
-        }
+        const val = iconInput.value.trim() || null;
+        await patchWorkspace(ws.id, { iconUrl: val });
       };
     }
+
+    if (renameBtn && nameInput) {
+      renameBtn.onclick = async () => {
+        const newName = nameInput.value.trim();
+        if (!newName) return alert("Name is required");
+        await patchWorkspace(ws.id, { name: newName });
+      };
+    }
+
+    modal.querySelectorAll(".gt-emoji-btn").forEach((btn) => {
+      btn.onclick = (e) => {
+        e.preventDefault();
+        const emoji = btn.getAttribute("data-emoji");
+        if (iconInput) iconInput.value = emoji;
+      };
+    });
   }
 
   async function saveWorkspaceRole(workspaceId, email, role) {
@@ -791,6 +798,35 @@
     } catch (err) {
       console.warn("[app] save role error", err);
       alert("Unexpected error saving role");
+    }
+  }
+
+  async function patchWorkspace(id, payload) {
+    try {
+      const resp = await fetch(`${WORKSPACES_API}/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.ok) {
+        alert("Failed to update workspace");
+        console.warn("[app] patch workspace failed", resp.status, data);
+        return null;
+      }
+      APP_STATE.workspaces = APP_STATE.workspaces.map((w) =>
+        w.id === id ? { ...w, ...data.workspace } : w
+      );
+      if (UI_STATE.chooserOpen) {
+        openWorkspaceChooser();
+      }
+      renderWorkspaceSettingsContent(APP_STATE.workspaces.find((w) => w.id === id));
+      renderWorkspaceSelect();
+      return data.workspace;
+    } catch (err) {
+      console.warn("[app] patch workspace error", err);
+      alert("Unexpected error updating workspace");
+      return null;
     }
   }
 

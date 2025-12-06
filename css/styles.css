@@ -567,6 +567,7 @@ body {
   gap: 6px;
   margin-top: 4px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .gt-input {
@@ -606,6 +607,21 @@ body {
   color: #111827;
 }
 
+.gt-emoji-grid {
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.gt-emoji-btn {
+  border: 1px solid var(--gt-border-subtle);
+  background: #fff;
+  border-radius: 8px;
+  padding: 4px 6px;
+  cursor: pointer;
+}
+.gt-emoji-btn:hover {
+  border-color: #4f46e5;
+}
 .gt-role-email {
   font-size: 11px;
   color: var(--gt-text-muted);
