@@ -211,7 +211,6 @@ a:hover {
   border-bottom: 1px solid var(--gt-border-subtle);
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
   background: #f9fafb;
 }
@@ -223,6 +222,17 @@ a:hover {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #4b5563;
+}
+
+.gt-panel-header-left {
+  display: flex;
+  align-items: center;
+}
+
+.gt-panel-header-middle {
+  flex: 1;
+  display: flex;
+  justify-content: center;
 }
 
 .gt-panel-header-actions,

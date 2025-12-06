@@ -155,7 +155,10 @@
         <main id="gt-main" class="gt-main">
           <section class="gt-panel">
             <div class="gt-panel-header">
-              <h2>Tasks</h2>
+              <div class="gt-panel-header-left"><h2>Tasks</h2></div>
+              <div class="gt-panel-header-middle">
+                <div id="gt-mode-tabs" class="gt-mode-tabs"></div>
+              </div>
               <div class="gt-panel-header-actions">
                 <button id="gt-add-task" class="gt-button gt-button-primary">
                   + New Task
@@ -177,7 +180,6 @@
 
               <!-- Main tasks shell (hidden until workspace chosen) -->
               <div id="gt-tasks-shell">
-                <div id="gt-mode-tabs" class="gt-mode-tabs"></div>
                 <div class="gt-view-tabs" id="gt-view-tabs">
                   <!-- view buttons injected by JS -->
                 </div>
