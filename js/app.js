@@ -160,6 +160,11 @@
                   </div>
                 </div>
 
+                <!-- ACTIVITY VIEW -->
+                <div id="gt-view-activity" class="gt-view-section is-hidden">
+                  <div id="gt-activity-root" class="gt-activity-feed"></div>
+                </div>
+
                 <!-- DASHBOARD VIEW -->
                 <div id="gt-view-dashboard" class="gt-view-section is-hidden">
                   <div id="gt-dashboard-root" class="gt-dashboard">
@@ -515,6 +520,7 @@
     let html = `
       <button class="gt-view-tab" data-view="table">Table</button>
       <button class="gt-view-tab" data-view="board">Card</button>
+      <button class="gt-view-tab" data-view="activity">Activity</button>
     `;
     if (showDashboard) {
       html += `<button class="gt-view-tab" data-view="dashboard">Dashboard</button>`;
@@ -544,11 +550,13 @@
 
     const tableEl = document.getElementById("gt-view-table");
     const boardEl = document.getElementById("gt-view-board");
+    const activityEl = document.getElementById("gt-view-activity");
     const dashEl = document.getElementById("gt-view-dashboard");
 
-    if (tableEl && boardEl && dashEl) {
+    if (tableEl && boardEl && dashEl && activityEl) {
       tableEl.classList.toggle("is-hidden", view !== "table");
       boardEl.classList.toggle("is-hidden", view !== "board");
+      activityEl.classList.toggle("is-hidden", view !== "activity");
       dashEl.classList.toggle("is-hidden", view !== "dashboard");
     }
 
@@ -558,6 +566,8 @@
       renderTasks();
     } else if (view === "board") {
       renderBoardView();
+    } else if (view === "activity") {
+      renderActivityView();
     } else if (view === "dashboard" && canViewDashboard()) {
       renderDashboardView();
     }
@@ -1769,6 +1779,9 @@
       user: APP_STATE.runtime.email || "unknown",
       timestamp: new Date().toISOString(),
     });
+    if (APP_STATE.currentView === "activity") {
+      renderActivityView();
+    }
     schedulePush();
   }
 
@@ -2000,6 +2013,7 @@
             sel.onchange = () => {
               setValue(task, col, sel.value || null);
               trackChange(task, col.id, prev, sel.value || null);
+              notifyAssignment(task, sel.value || null);
               touch(task);
             };
             td.appendChild(sel);
@@ -2280,6 +2294,62 @@
     });
   }
 
+  // -------- Activity View --------
+  function renderActivityView() {
+    const root = document.getElementById("gt-activity-root");
+    if (!root) return;
+
+    const fieldLabels = { title: "Title", status: "Status", assignee: "Assignee", updatedAt: "Updated" };
+    const columns = (APP_STATE.columns && APP_STATE.columns.length)
+      ? APP_STATE.columns
+      : DEFAULT_COLUMNS;
+    columns.forEach((c) => {
+      fieldLabels[c.id] = c.label || c.id;
+    });
+
+    const tasksById = Object.fromEntries((APP_STATE.tasks || []).map((t) => [t.id, t]));
+    const activity = (APP_STATE.activity || [])
+      .slice()
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    const fmtVal = (val) => {
+      if (val === undefined || val === null) return "—";
+      if (Array.isArray(val)) return val.join(", ") || "—";
+      if (val === true) return "Yes";
+      if (val === false) return "No";
+      return String(val);
+    };
+
+    if (!activity.length) {
+      root.innerHTML = `<div class="gt-muted">No activity yet</div>`;
+      return;
+    }
+
+    const html = activity
+      .map((a) => {
+        const task = tasksById[a.taskId];
+        const title = task?.title || "Untitled";
+        const field = fieldLabels[a.field] || a.field || "Field";
+        return `
+          <div class="gt-activity-row">
+            <div class="gt-activity-header">
+              <div class="gt-activity-title">${title}</div>
+              <div class="gt-activity-meta">${formatDateTimeShort(a.timestamp)} · ${a.user || "unknown"}</div>
+            </div>
+            <div class="gt-activity-change">
+              <span class="gt-activity-field">${field}</span>
+              <span class="gt-activity-arrow">→</span>
+              <span class="gt-activity-before">${fmtVal(a.before)}</span>
+              <span class="gt-activity-after">${fmtVal(a.after)}</span>
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+
+    root.innerHTML = html;
+  }
+
   // -------- Detail Drawer --------
   function closeDetailDrawer() {
     const drawer = document.getElementById("gt-detail-drawer");
@@ -2324,6 +2394,9 @@
       trackChange(task, col.id, prev, val);
       if (col.id === "status") {
         notifyStatusChange(task, prev, val);
+      }
+      if (col.id === "assignee") {
+        notifyAssignment(task, val);
       }
       touch(task);
       renderTasks();

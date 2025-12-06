@@ -955,6 +955,65 @@ a:hover {
   color: var(--gt-text-main);
 }
 
+/* Activity */
+.gt-activity-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gt-activity-row {
+  border: 1px solid var(--gt-border-subtle);
+  border-radius: 10px;
+  padding: 10px;
+  background: #ffffff;
+  box-shadow: var(--gt-shadow-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gt-activity-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.gt-activity-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gt-text-main);
+}
+
+.gt-activity-meta {
+  font-size: 11px;
+  color: var(--gt-text-muted);
+}
+
+.gt-activity-change {
+  display: grid;
+  grid-template-columns: auto auto 1fr 1fr;
+  gap: 6px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--gt-text-main);
+}
+
+.gt-activity-field {
+  font-weight: 600;
+}
+
+.gt-activity-arrow {
+  color: var(--gt-text-soft);
+}
+
+.gt-activity-before,
+.gt-activity-after {
+  color: var(--gt-text-muted);
+  word-break: break-word;
+}
+
 .gt-task-title-input,
 .gt-table select {
   width: 100%;
