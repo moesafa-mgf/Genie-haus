@@ -572,9 +572,9 @@ a:hover {
   right: 0;
   height: 100%;
   width: min(420px, 92vw);
-  background: #fff;
-  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.1);
-  padding: 14px;
+  background: linear-gradient(180deg, #ffffff, #f9fafc);
+  box-shadow: -14px 0 28px rgba(15, 23, 42, 0.14);
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -629,6 +629,9 @@ a:hover {
   color: var(--gt-text-muted);
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .gt-drawer-field-control {
@@ -861,10 +864,11 @@ a:hover {
 
 /* Tables */
 .gt-table-wrapper {
-  border-radius: 8px;
-  border: 1px solid var(--gt-border-subtle);
-  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
   background: #ffffff;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
   flex: 1;
 }
 
@@ -913,14 +917,18 @@ a:hover {
 }
 
 .gt-table thead {
-  background: #f9fafb;
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+  z-index: 1;
+  box-shadow: 0 1px 0 #e5e7eb;
 }
 
 .gt-table th,
 .gt-table td {
-  padding: 5px 9px;
-  border-bottom: 1px solid var(--gt-border-subtle);
-  border-right: 1px solid var(--gt-border-subtle);
+  padding: 10px 12px;
+  border-bottom: 1px solid #eef2f7;
+  border-right: 1px solid #eef2f7;
   text-align: left;
 }
 
@@ -1042,7 +1050,6 @@ a:hover {
   position: relative;
   padding-right: 10px;
 }
-
 .gt-col-menu-trigger {
   display: inline-flex;
   align-items: center;
@@ -1133,20 +1140,21 @@ a:hover {
 
 .gt-board-column {
   flex: 0 0 230px;
-  background: #f9fafb;
-  border-radius: 8px;
-  border: 1px solid var(--gt-border-subtle);
-  padding: 7px;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  padding: 10px;
   display: flex;
   flex-direction: column;
   max-height: 100%;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
 }
 
 .gt-board-column-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .gt-board-column-title {
@@ -1169,17 +1177,18 @@ a:hover {
 }
 
 .gt-card {
-  border-radius: 7px;
-  padding: 6px 7px;
-  background: #ffffff;
-  border: 1px solid var(--gt-border-subtle);
-  margin-bottom: 5px;
+  border-radius: 10px;
+  padding: 8px 9px;
+  background: linear-gradient(180deg, #ffffff, #fafbff);
+  border: 1px solid #e2e8f0;
+  margin-bottom: 7px;
   cursor: grab;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06);
 }
 
 .gt-card:hover {
   border-color: var(--gt-accent);
-  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 10px 18px rgba(79, 70, 229, 0.14);
 }
 
 .gt-card-title {
