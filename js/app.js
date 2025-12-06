@@ -32,6 +32,7 @@
     },
     sync: { status: "idle", lastRemoteAt: null },
     instanceId: `client_${Math.random().toString(36).slice(2)}`,
+    userColors: {}, // workspaceId -> { emailLower: colorId }
   };
 
   const DEFAULT_COLUMNS = [
@@ -85,6 +86,37 @@
     { value: "last_modified_by", label: "Last modified by" },
   ];
   const OPTION_COLORS = ["gray", "blue", "green", "red", "yellow", "purple", "pink", "teal"];
+  const COLOR_PALETTE = [
+    { id: "ice", bg: "#e6edff", text: "#1d4ed8", border: "#d0dbff" },
+    { id: "sky", bg: "#e0f2fe", text: "#0369a1", border: "#cbe5fb" },
+    { id: "mint", bg: "#e0f7f4", text: "#0f766e", border: "#c8eee8" },
+    { id: "sage", bg: "#e8f2e7", text: "#166534", border: "#d6e6d3" },
+    { id: "sand", bg: "#f8f3e8", text: "#92400e", border: "#eddfc5" },
+    { id: "blush", bg: "#fce8ef", text: "#9d174d", border: "#f6cfdd" },
+    { id: "lilac", bg: "#f1e8ff", text: "#6d28d9", border: "#e2d4fb" },
+    { id: "stone", bg: "#eef0f3", text: "#334155", border: "#dfe4ea" },
+    { id: "blue", bg: "#dbeafe", text: "#1d4ed8", border: "#bfdbfe" },
+    { id: "cyan", bg: "#cffafe", text: "#0e7490", border: "#b6f0f7" },
+    { id: "teal", bg: "#ccfbf1", text: "#0d9488", border: "#b2f3e6" },
+    { id: "green", bg: "#dcfce7", text: "#15803d", border: "#c8f7d6" },
+    { id: "amber", bg: "#fef3c7", text: "#b45309", border: "#f9e4a3" },
+    { id: "peach", bg: "#ffe4e1", text: "#c2410c", border: "#f8c9bf" },
+    { id: "rose", bg: "#ffe4e6", text: "#be123c", border: "#f8c6cf" },
+    { id: "magenta", bg: "#fce7f3", text: "#be185d", border: "#f5c8e4" },
+    { id: "purple", bg: "#ede9fe", text: "#7c3aed", border: "#dcd4fc" },
+    { id: "plum", bg: "#f3e8ff", text: "#6b21a8", border: "#e3d1fb" },
+    { id: "midnight", bg: "#e2e8f0", text: "#1e293b", border: "#cbd5e1" },
+    { id: "navy", bg: "#dbeafe", text: "#1e3a8a", border: "#cbdaf8" },
+    { id: "forest", bg: "#e7f3ec", text: "#065f46", border: "#d3e8dc" },
+    { id: "gold", bg: "#fef9c3", text: "#854d0e", border: "#f6ee9f" },
+    { id: "burnt", bg: "#fef2e2", text: "#9a3412", border: "#f8dfc4" },
+    { id: "charcoal", bg: "#e5e7eb", text: "#111827", border: "#d1d5db" },
+  ];
+
+  const COLOR_META = COLOR_PALETTE.reduce((acc, c) => {
+    acc[c.id] = c;
+    return acc;
+  }, {});
 
   const UI_STATE = {
     chooserOpen: false,
@@ -450,6 +482,7 @@
         APP_STATE.activity = Array.isArray(data.state.activity) ? data.state.activity : (APP_STATE.activity || []);
         APP_STATE.grids = Array.isArray(data.state.grids) ? data.state.grids : [];
         APP_STATE.currentGridId = data.state.currentGridId || null;
+        APP_STATE.userColors = data.state.userColors || APP_STATE.userColors || {};
         if (APP_STATE.currentWorkspaceId) {
           const saved = APP_STATE.workspaceFilters[APP_STATE.currentWorkspaceId];
           APP_STATE.filters = saved ? { ...defaultFilters(), ...saved } : defaultFilters();
@@ -472,6 +505,9 @@
           APP_STATE.currentGridId = data.state.currentGridId || null;
           ensureDefaultGrid();
           renderGridTabs();
+        }
+        if (data.state?.userColors) {
+          APP_STATE.userColors = data.state.userColors;
         }
         if (APP_STATE.currentWorkspaceId) {
           const saved = APP_STATE.workspaceFilters[APP_STATE.currentWorkspaceId];
@@ -510,6 +546,7 @@
             activity: APP_STATE.activity,
             grids: APP_STATE.grids,
             currentGridId: APP_STATE.currentGridId,
+            userColors: APP_STATE.userColors,
           },
         }),
       });
@@ -857,6 +894,12 @@
     }, 2400);
   }
 
+  function getColorSpec(colorId) {
+    if (colorId && COLOR_META[colorId]) return COLOR_META[colorId];
+    if (colorId && COLOR_META[colorId.toLowerCase()]) return COLOR_META[colorId.toLowerCase()];
+    return { id: "neutral", bg: "#eef2f7", text: "#334155", border: "#e2e8f0" };
+  }
+
   function renderWorkspaceSelect() {
     // no-op stub (sidebar removed)
   }
@@ -897,6 +940,7 @@
     APP_STATE.grids = [];
     APP_STATE.currentGridId = null;
     APP_STATE.currentMode = "data";
+    APP_STATE.userColors = APP_STATE.userColors || {};
     const savedFilters = (APP_STATE.workspaceFilters && workspaceId)
       ? APP_STATE.workspaceFilters[workspaceId]
       : null;
@@ -964,20 +1008,29 @@
       `<option value="custom">Custom…</option>`,
     ].join("");
 
-    const rows = staff.map((u) => {
+      const wsColorMap = (APP_STATE.userColors && APP_STATE.userColors[ws.id]) || {};
+      const rows = staff.map((u) => {
       const current = roles[u.email.toLowerCase()] || "none";
+      const colorId = wsColorMap[u.email.toLowerCase()] || "ice";
+      const spec = getColorSpec(colorId);
       return `
         <div class="gt-role-row">
           <div>
             <div class="gt-role-name">${u.name}</div>
             <div class="gt-role-email">${u.email}</div>
           </div>
-          <select class="gt-select gt-role-select" data-email="${u.email}">
-            <option value="none">No access</option>
-            <option value="admin" ${current === "admin" ? "selected" : ""}>Admin</option>
-            <option value="manager" ${current === "manager" ? "selected" : ""}>Manager</option>
-            <option value="member" ${current === "member" ? "selected" : ""}>Member</option>
-          </select>
+          <div class="gt-role-actions">
+            <button class="gt-color-chip" type="button" data-user-color="${u.email}" style="background:${spec.bg}; color:${spec.text}; border-color:${spec.border};">Color</button>
+            <div class="gt-color-grid" data-user-color-grid="${u.email}">
+              ${COLOR_PALETTE.map((c) => `<button type="button" class="gt-color-swatch" data-user-color-set="${u.email}" data-color-id="${c.id}" style="background:${c.bg}; color:${c.text}; border-color:${c.border};">Aa</button>`).join("")}
+            </div>
+            <select class="gt-select gt-role-select" data-email="${u.email}">
+              <option value="none">No access</option>
+              <option value="admin" ${current === "admin" ? "selected" : ""}>Admin</option>
+              <option value="manager" ${current === "manager" ? "selected" : ""}>Manager</option>
+              <option value="member" ${current === "member" ? "selected" : ""}>Member</option>
+            </select>
+          </div>
         </div>
       `;
     });
@@ -1031,6 +1084,25 @@
         await saveWorkspaceRole(ws.id, email, role);
         renderWorkspaceSettingsContent(ws);
       });
+    });
+
+    modal.querySelectorAll("[data-user-color]").forEach((btn) => {
+      const email = btn.getAttribute("data-user-color");
+      const grid = modal.querySelector(`[data-user-color-grid="${CSS.escape(email)}"]`);
+      if (!grid) return;
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        grid.classList.toggle("is-open");
+      };
+    });
+
+    modal.querySelectorAll("[data-user-color-set]").forEach((sw) => {
+      sw.onclick = () => {
+        const email = sw.getAttribute("data-user-color-set");
+        const color = sw.getAttribute("data-color-id");
+        setUserColor(ws.id, email, color);
+        renderWorkspaceSettingsContent(ws);
+      };
     });
 
     const iconSave = document.getElementById("gt-icon-save");
@@ -1131,6 +1203,15 @@
       console.warn("[app] save role error", err);
       showToast("Unexpected error saving role", "error");
     }
+  }
+
+  function setUserColor(workspaceId, email, colorId) {
+    if (!workspaceId || !email) return;
+    const wsMap = APP_STATE.userColors || {};
+    if (!wsMap[workspaceId]) wsMap[workspaceId] = {};
+    wsMap[workspaceId][email.toLowerCase()] = colorId;
+    APP_STATE.userColors = wsMap;
+    schedulePush();
   }
 
   async function patchWorkspace(id, payload) {
@@ -1846,12 +1927,14 @@
       if (!optionsList) return;
       optionsList.innerHTML = options
         .map((opt, idx) => {
+          const spec = getColorSpec(opt.color);
           return `
             <div class="gt-option-row" data-idx="${idx}">
               <input class="gt-input gt-option-label" type="text" value="${opt.label || ""}" />
-              <select class="gt-select gt-option-color">
-                ${OPTION_COLORS.map((c) => `<option value="${c}" ${opt.color === c ? "selected" : ""}>${c}</option>`).join("")}
-              </select>
+              <button class="gt-color-chip" type="button" data-color-toggle="${idx}" style="background:${spec.bg}; color:${spec.text}; border-color:${spec.border};">${(opt.label || "").slice(0, 8) || "Color"}</button>
+              <div class="gt-color-grid" data-color-grid="${idx}">
+                ${COLOR_PALETTE.map((c) => `<button type="button" class="gt-color-swatch" data-color-set="${idx}" data-color-id="${c.id}" style="background:${c.bg}; color:${c.text}; border-color:${c.border};">Aa</button>`).join("")}
+              </div>
               <button class="gt-button gt-button-small gt-button-danger gt-option-remove">Remove</button>
             </div>
           `;
@@ -1861,17 +1944,26 @@
       optionsList.querySelectorAll(".gt-option-row").forEach((row) => {
         const idx = Number(row.getAttribute("data-idx"));
         const labelInput = row.querySelector(".gt-option-label");
-        const colorSelect = row.querySelector(".gt-option-color");
         const removeBtn = row.querySelector(".gt-option-remove");
+        const chip = row.querySelector("[data-color-toggle]");
+        const grid = row.querySelector("[data-color-grid]");
         if (labelInput) {
           labelInput.oninput = () => {
             options[idx].label = labelInput.value;
           };
         }
-        if (colorSelect) {
-          colorSelect.onchange = () => {
-            options[idx].color = colorSelect.value;
+        if (chip && grid) {
+          chip.onclick = () => {
+            grid.classList.toggle("is-open");
           };
+          grid.querySelectorAll("[data-color-set]").forEach((sw) => {
+            sw.onclick = () => {
+              const val = sw.getAttribute("data-color-id");
+              options[idx].color = val;
+              grid.classList.remove("is-open");
+              renderOptionRows();
+            };
+          });
         }
         if (removeBtn) {
           removeBtn.onclick = () => {
@@ -2275,12 +2367,21 @@
             const sel = document.createElement("select");
             sel.innerHTML = `<option value="">Select…</option>` + renderSelectOptions(col);
             sel.value = current || "";
+            const applyColor = () => {
+              const optDef = (col.options || []).find((o) => o.id === sel.value);
+              const spec = getColorSpec(optDef?.color);
+              sel.style.background = spec.bg;
+              sel.style.color = spec.text;
+              sel.style.borderColor = spec.border;
+            };
+            applyColor();
             sel.onchange = () => {
               setValue(task, col, sel.value || null);
               trackChange(task, col.id, prev, sel.value || null);
               notifyStatusChange(task, prev, sel.value || null);
               touch(task);
               renderBoardView();
+              applyColor();
             };
             td.appendChild(sel);
             enableCellQuickFocus(td, sel);
@@ -2800,7 +2901,16 @@
           sel.className = "gt-select";
           sel.innerHTML = `<option value="">Select…</option>` + renderSelectOptions(col);
           sel.value = value || "";
+          const applyColor = () => {
+            const optDef = (col.options || []).find((o) => o.id === sel.value);
+            const spec = getColorSpec(optDef?.color);
+            sel.style.background = spec.bg;
+            sel.style.color = spec.text;
+            sel.style.borderColor = spec.border;
+          };
+          applyColor();
           sel.onchange = () => setValue(col, sel.value || null, prev);
+          sel.addEventListener("change", applyColor);
           controlHolder.appendChild(sel);
           break;
         }
