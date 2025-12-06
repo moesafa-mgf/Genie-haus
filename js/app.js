@@ -862,7 +862,7 @@
         return null;
       }
       if (!resp.ok || !data.ok) {
-        const detail = data?.error || data?.detail || `HTTP ${resp.status}`;
+        const detail = data?.detail || data?.error || `HTTP ${resp.status}`;
         console.warn("[app] patch workspace failed", resp.status, data);
         alert(`Failed to update workspace: ${detail}`);
         return null;

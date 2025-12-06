@@ -15,6 +15,20 @@ const sql = process.env.DATABASE_URL
   ? postgres(process.env.DATABASE_URL, { ssl: "require" })
   : null;
 
+let ensuredIconColumn = false;
+async function ensureIconColumn() {
+  if (ensuredIconColumn || !sql) return;
+  try {
+    await sql`
+      ALTER TABLE IF EXISTS workspaces
+      ADD COLUMN IF NOT EXISTS icon_url TEXT
+    `;
+    ensuredIconColumn = true;
+  } catch (err) {
+    console.error("[workspaces] ensureIconColumn failed", err);
+  }
+}
+
 function parseJsonBody(req) {
   let body = req.body;
   // Vercel can hand us a Buffer; normalize to string first
@@ -59,6 +73,7 @@ module.exports = async (req, res) => {
     }
 
     try {
+      await ensureIconColumn();
       let workspaces;
 
       if (userEmail) {
@@ -111,6 +126,7 @@ module.exports = async (req, res) => {
     }
 
     try {
+      await ensureIconColumn();
       const rows = await sql`
           INSERT INTO workspaces (location_id, name, icon_url, created_by)
           VALUES (${locationId}, ${name}, ${body.iconUrl || null}, ${createdBy || null})
@@ -143,6 +159,7 @@ module.exports = async (req, res) => {
     }
 
     try {
+      await ensureIconColumn();
       console.log("[workspaces][PATCH]", { id, name, iconUrl });
       const rows = await sql`
         UPDATE workspaces
