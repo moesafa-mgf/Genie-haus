@@ -836,16 +836,29 @@
   }
 
   async function patchWorkspace(id, payload) {
+    if (!id) {
+      alert("No workspace selected to update.");
+      return null;
+    }
     try {
       const resp = await fetch(`${WORKSPACES_API}/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = await resp.json();
+      let data;
+      try {
+        data = await resp.json();
+      } catch (parseErr) {
+        const text = await resp.text();
+        console.warn("[app] patch workspace parse error", parseErr, text);
+        alert(`Failed to update workspace (bad response).`);
+        return null;
+      }
       if (!resp.ok || !data.ok) {
-        alert("Failed to update workspace");
+        const detail = data?.error || data?.detail || `HTTP ${resp.status}`;
         console.warn("[app] patch workspace failed", resp.status, data);
+        alert(`Failed to update workspace: ${detail}`);
         return null;
       }
       APP_STATE.workspaces = APP_STATE.workspaces.map((w) =>

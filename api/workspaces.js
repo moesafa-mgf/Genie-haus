@@ -141,6 +141,7 @@ module.exports = async (req, res) => {
     }
 
     try {
+      console.log("[workspaces][PATCH]", { id, name, iconUrl });
       const rows = await sql`
         UPDATE workspaces
           SET
