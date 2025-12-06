@@ -740,8 +740,11 @@
           <div class="gt-modal-label">Icon</div>
           <div class="gt-modal-help">Pick from the list or paste any emoji.</div>
           <div class="gt-role-form">
+            <div class="gt-icon-field">
+              <span id="gt-icon-preview" class="gt-icon-preview">${iconVal || "📋"}</span>
+              <input id="gt-icon-url" class="gt-input gt-icon-input" type="text" placeholder="🔮 paste or pick" value="${iconVal}" />
+            </div>
             <select id="gt-emoji-select" class="gt-select">${emojiOptions}</select>
-            <input id="gt-icon-url" class="gt-input" type="text" placeholder="🔮 paste or pick" value="${iconVal}" />
             <button id="gt-icon-save" class="gt-button gt-button-primary">Save Icon</button>
           </div>
         </div>
@@ -771,9 +774,17 @@
 
     const iconSave = document.getElementById("gt-icon-save");
     const iconInput = document.getElementById("gt-icon-url");
+    const iconPreview = document.getElementById("gt-icon-preview");
     const emojiSelect = document.getElementById("gt-emoji-select");
     const renameBtn = document.getElementById("gt-ws-rename");
     const nameInput = document.getElementById("gt-ws-name");
+
+    const setPreview = (val) => {
+      if (iconPreview) {
+        iconPreview.textContent = val || "📋";
+      }
+    };
+    setPreview(iconVal);
 
     if (iconSave && iconInput) {
       iconSave.onclick = async () => {
@@ -806,8 +817,16 @@
         }
         if (choice) {
           iconInput.value = choice;
+          setPreview(choice);
         }
       };
+    }
+
+    if (iconInput) {
+      iconInput.addEventListener("input", () => {
+        const val = iconInput.value && iconInput.value.trim();
+        setPreview(val);
+      });
     }
   }
 
